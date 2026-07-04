@@ -75,6 +75,14 @@ export function getCategoryHref(categorySlug: string) {
   return parentSlug ? `/${parentSlug}/${categorySlug}` : `/${categorySlug}`;
 }
 
+/** Top navigation: category pages surfaced directly, as in the original site design. */
+export const topNavItems = [
+  { label: 'Experience', href: getCategoryHref('experience') },
+  { label: 'Projects', href: getCategoryHref('projects') },
+  { label: 'Case Studies', href: getCategoryHref('case-studies') },
+  { label: 'About', href: `${getCategoryHref('about')}/about-jonathan` },
+] as const;
+
 export type SidebarSection = {
   name: string;
   slug: string;
