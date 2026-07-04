@@ -6,6 +6,8 @@ const site = {
   siteUrl: 'https://jonathan-david-hussey.github.io',
   ogImage: '/og-image.png',
   githubUrl: 'https://github.com/jonathan-david-hussey',
+  linkedinUrl: 'https://linkedin.com/in/jonathan-david-hussey',
+  email: 'jonathan.david.hussey@gmail.com',
   navCtaLabel: 'GitHub',
   navCtaHref: 'https://github.com/jonathan-david-hussey',
   footerText:
