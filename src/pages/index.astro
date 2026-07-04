@@ -19,17 +19,107 @@ const allDocs = await getCollection('docs');
 const publicDocs = getPublicDocs(allDocs);
 const suggestedArticles = getSuggestedSearchArticles(publicDocs);
 const searchPreviews = getSearchPreviewLookup(publicDocs);
+
+const highlights = [
+  { value: '14+ yrs', label: 'designing and delivering production systems' },
+  { value: '89%', label: 'search latency cut across an Elasticsearch cluster' },
+  { value: '92%', label: 'infrastructure cost reduction for a flagship product' },
+  { value: '0', label: 'site-wide outages after a concurrency redesign' },
+  { value: '100%', label: 'data yield restored (from 6.25%) by fixing a 5-year-old ingestion bug' },
+  { value: '125M/mo', label: 'records classified by an end-to-end ML pipeline' },
+];
 ---
 
 <Layout title={site.title} description={site.description}>
   <SearchPreviews previews={searchPreviews} />
+
+  <section class="bg-[var(--color-surface)] pt-12 md:pt-16">
+    <div
+      class="mx-auto flex w-full max-w-[1280px] flex-col-reverse items-start gap-8 px-4 md:flex-row md:items-center md:justify-between md:px-8"
+    >
+      <div class="max-w-[640px]">
+        <h1
+          class="mb-3 text-4xl font-extrabold tracking-tight text-[var(--color-text-strong)] md:text-5xl"
+        >
+          Jonathan Hussey
+        </h1>
+        <p class="mb-1 text-lg font-semibold text-[var(--color-text-strong)]">
+          Staff Software Engineer / Software Architect
+        </p>
+        <p class="mb-4 text-[var(--color-text)]">
+          .NET architecture, cloud-native systems, AI-enabled platforms
+        </p>
+        <p class="mb-6 text-[var(--color-text)]">
+          14+ years designing, rebuilding, and running modern .NET, cloud-native, and AI-enabled
+          platforms across SaaS, healthcare, government, analytics, and enterprise environments —
+          leading architecture while staying hands-on, and measuring the result.
+        </p>
+        <div class="flex flex-wrap gap-3">
+          <a
+            href={site.githubUrl}
+            target="_blank"
+            rel="noreferrer"
+            class="rounded-[15px] bg-[var(--color-brand)] px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-[var(--color-brand-hover)]"
+          >
+            GitHub
+          </a>
+          <a
+            href={site.linkedinUrl}
+            target="_blank"
+            rel="noreferrer"
+            class="rounded-[15px] border border-[var(--color-border)] px-4 py-2 text-sm font-semibold text-[var(--color-text-strong)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+          >
+            LinkedIn
+          </a>
+          <a
+            href={`mailto:${site.email}`}
+            class="rounded-[15px] border border-[var(--color-border)] px-4 py-2 text-sm font-semibold text-[var(--color-text-strong)] transition-colors hover:border-[var(--color-accent)] hover:text-[var(--color-accent)]"
+          >
+            Email
+          </a>
+        </div>
+      </div>
+      <img
+        src="/portrait.jpg"
+        alt="Portrait of Jonathan Hussey"
+        width="220"
+        height="220"
+        loading="eager"
+        class="h-[140px] w-[140px] shrink-0 rounded-full border-4 border-[var(--color-border)] object-cover md:h-[220px] md:w-[220px]"
+      />
+    </div>
+  </section>
+
   <SearchHero
     suggestions={suggestedArticles}
-    title="Jonathan Hussey — Software Architect"
+    title=""
     placeholder="Search projects, case studies, experience..."
   />
 
-  <div class="py-8 md:py-10">
+  <section class="py-8 md:py-10" aria-labelledby="highlights-heading">
+    <div class="mx-auto w-full max-w-[1280px] px-4 md:px-8">
+      <h2
+        id="highlights-heading"
+        class="mb-6 text-2xl font-bold tracking-tight text-[var(--color-text-strong)]"
+      >
+        Highlights
+      </h2>
+      <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {
+          highlights.map((highlight) => (
+            <div class="rounded-[15px] border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+              <div class="text-3xl font-extrabold tracking-tight text-[var(--color-brand)]">
+                {highlight.value}
+              </div>
+              <div class="mt-1 text-sm text-[var(--color-text)]">{highlight.label}</div>
+            </div>
+          ))
+        }
+      </div>
+    </div>
+  </section>
+
+  <div class="pb-8 md:pb-10">
     {
       docsParentCategories.map((parent) => (
         <CategorySection slug={parent.slug} title={parent.name} description={parent.description}>
