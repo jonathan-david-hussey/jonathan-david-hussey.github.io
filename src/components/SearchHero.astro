@@ -22,13 +22,20 @@ const hintId = `${id}-hint`;
 const statusId = `${id}-status`;
 ---
 
-<section class="search-hero bg-[var(--color-surface)] py-14 md:py-16">
+<section
+  class:list={[
+    'search-hero bg-[var(--color-surface)]',
+    title ? 'py-14 md:py-16' : 'py-8 md:py-10',
+  ]}
+>
   <div class="mx-auto w-full max-w-[1280px] px-4 text-center md:px-8">
-    <h1
-      class="search-hero-title mb-6 text-4xl font-extrabold tracking-tight text-[var(--color-text-strong)] md:text-5xl"
-    >
-      {title}
-    </h1>
+    {
+      title && (
+        <h1 class="search-hero-title mb-6 text-4xl font-extrabold tracking-tight text-[var(--color-text-strong)] md:text-5xl">
+          {title}
+        </h1>
+      )
+    }
 
     <div
       class="relative mx-auto w-full max-w-[600px]"
