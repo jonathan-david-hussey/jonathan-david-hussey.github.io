@@ -1,0 +1,29 @@
+---
+title: 'DarkBoxFramework'
+description: 'A Python research framework for evolving image-processing pipelines for object recognition, combining scikit-image transforms, scikit-learn classifiers, and AIS plus simulated annealing optimization.'
+category: 'projects'
+tags: ['Python', 'scikit-image', 'scikit-learn', 'joblib', 'NumPy', 'Matplotlib', 'MySQL', 'Metaheuristics']
+order: 5
+---
+
+*Author · 2014 - 2016*
+
+**At a glance**
+
+- 56 image transform classes covering filters, feature extraction, morphology, thresholding, rank filters, and exposure adjustments
+- 7 optimizer implementations, including an Artificial Immune System plus Simulated Annealing search path
+- 33 serialized learner artifacts produced from evolved image-processing pipelines
+
+DarkBoxFramework is a Python research framework for automated object recognition. It explores a practical question from computer vision work: instead of choosing image-processing steps by hand, can a system search for a better sequence of transforms and classifier settings by treating the pipeline itself as something to optimize?
+
+The project models an image-processing pipeline as DNA. A solution is encoded as an ordered list of transforms and parameters, then evaluated by applying that pipeline across a training image set, extracting features, and scoring a scikit-learn classifier. The best candidates are then mutated, re-scored, and retained through an evolutionary search loop.
+
+The main optimization path combines Artificial Immune System ideas with simulated annealing. The `AISSA` implementation creates and scores a population of candidate pipelines, sorts candidates by fitness, applies rank-influenced mutation, and uses simulated annealing as part of replacement decisions. The wider optimizer folder also includes implementations or scaffolding for genetic algorithms, particle swarm optimization, ant colony optimization, artificial bee colony optimization, and genetic programming.
+
+The transform layer wraps a large set of image-processing operations behind a registry-style architecture. The repository includes 56 transform classes spanning blurs, edge detectors, corner detection, HOG, local binary patterns, Gabor filters, morphology, thresholding, rank filters, and exposure adjustments. This made the search space broad enough to test many feature-engineering paths without hard-coding one fixed pipeline.
+
+Evaluation was built around scikit-learn classifiers and repeatable experiment output. The framework records metrics such as accuracy, F1, precision, recall, and Matthews correlation, uses joblib to parallelize image processing across the image set, and can persist results through flat files, MySQL-backed records, or HTTP posting. The repository also contains 33 serialized `.pkl` learner artifacts from previous runs.
+
+The project is intentionally archival: it reflects experimental research code from 2014 to 2016 rather than a production package. As a portfolio project, it shows early hands-on work with computer vision, automated feature engineering, evolutionary algorithms, experiment tracking, and the engineering tradeoffs involved in turning a search idea into a runnable framework.
+
+The source is being prepared for public GitHub release. Once it is public, this project page can link directly to the repository from the project card.

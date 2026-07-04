@@ -1,0 +1,35 @@
+---
+title: 'Autonomous Vehicle Backend'
+description: 'A NestJS backend for autonomous vehicle coordination: MQTT telemetry intake, mission assignment, mission-status tracking, MongoDB persistence, Swagger-documented APIs, and a Dockerized simulation stack.'
+category: 'projects'
+tags: ['TypeScript', 'NestJS', 'MongoDB', 'TypeORM', 'MQTT', 'EMQX', 'Docker', 'Swagger', 'Jest', 'Python']
+order: 4
+---
+
+*Author · 2025*
+
+**At a glance**
+
+- 4-service Docker Compose stack for EMQX, MongoDB, API, and telemetry simulation
+- 3 MQTT topic flows for telemetry, mission dispatch, and mission status updates
+- 13 spec and e2e test files covering services, listeners, and API behavior
+
+The Autonomous Vehicle Backend is a NestJS system for coordinating autonomous vehicles through a mix of HTTP APIs, MQTT messaging, and MongoDB persistence. It manages vehicle records, mission definitions, vehicle-mission assignments, telemetry intake, mission status history, and JSON mission reports.
+
+The runtime stack is designed to be started locally with Docker Compose. It brings up an EMQX MQTT broker, MongoDB, the NestJS API, and a Python telemetry sender that can publish simulated vehicle telemetry to the broker. Swagger is exposed at `/api`, and the HTTP API uses URI versioning, JWT guards, global validation, and a global exception filter.
+
+The MQTT side listens to three topic patterns:
+
+1. `vehicle/+/telemetry`
+2. `vehicle/+/mission`
+3. `vehicle/+/mission/status`
+
+Incoming MQTT messages are routed through NestJS message handlers into an internal event service, which decouples broker concerns from domain processing. Telemetry messages are validated against registered vehicles before they are written to MongoDB. Mission status responses are persisted as timestamped status records.
+
+Mission assignment is an event-driven flow. The HTTP API creates the vehicle-mission record, stores an initial `PENDING` status, emits a create-mission event, then a listener records the `QUEUED` status and publishes the mission payload to the target vehicle topic at `vehicle/{vehicleId}/mission`. A separate listener handles status responses such as `IN_PROGRESS`, `COMPLETED`, and `FAILED`.
+
+Persistence is handled through TypeORM over MongoDB. The data model includes vehicles, missions, vehicle-mission assignments, mission status entries, and telemetry records. Telemetry entries include a generated telemetry id, vehicle id, timestamp, GeoJSON-style location, and optional status.
+
+The reporting path composes mission reports from multiple repositories. It joins vehicle-mission assignments with their vehicles, missions, and status histories so the API can return an operational view of what was assigned, to which vehicle, and how the mission progressed.
+
+The project also includes a Postman collection, migration tooling with `migrate-mongo`, Jest unit and e2e tests, and an improvement backlog covering production hardening areas such as broker ACLs, TLS, observability, retries, rate limiting, and stronger persistence/indexing choices.

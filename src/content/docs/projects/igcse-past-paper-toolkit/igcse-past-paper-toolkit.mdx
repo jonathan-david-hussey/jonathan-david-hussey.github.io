@@ -1,0 +1,29 @@
+---
+title: 'IGCSE Past Paper Toolkit'
+description: 'A Python toolkit for turning Cambridge IGCSE past-paper PDFs into topic-focused study packs, answer manifests, and similar-question search results.'
+category: 'projects'
+tags: ['Python', 'PyMuPDF', 'Sentence Transformers', 'NumPy', 'FAISS', 'pytest', 'MyPy', 'Ruff']
+order: 1
+---
+
+*Author · 2026 -*
+
+**At a glance**
+
+- 10 console entry points for extraction, search, topic mapping, graphing, and quality gates
+- 85% branch coverage threshold enforced by the strict quality gate
+- 384-dimensional deterministic embedding fallback when transformer models are unavailable
+
+The IGCSE Past Paper Toolkit is a Python project for making Cambridge IGCSE Economics revision material easier to assemble from years of question-paper and mark-scheme PDFs. Instead of manually opening papers, finding matching questions, copying answer pages, and tracking source references, the toolkit builds repeatable study packs from the original PDFs.
+
+The main consolidation path scans question papers, detects the answer style for the folder, extracts matching question blocks, filters by topic terms or aliases, removes duplicates, applies optional limits or question selectors, and writes the results as a questions PDF, answers PDF, manifest CSV, and optional combined PDF. The manifest keeps the source paper, question number, answer details, and output references tied together so the generated pack can still be audited.
+
+The command-line interface supports topic profiles, extra aliases, required terms, any-of term groups, excluded terms, correct-option topic checks, match modes, explicit question ranges, custom run IDs, and filename templates. That gives the project a useful shape: it can be used for a quick one-off revision pack, but it can also produce named, repeatable outputs for a longer study workflow.
+
+The project also includes a similar-question search path. It builds an index of extracted questions with JSONL records, NumPy embeddings, metadata, keywords, question clips, and paired answer information. Search combines semantic similarity with keyword overlap, token overlap, a same-syllabus bonus, duplicate filtering, and representation-aware penalties for mismatches such as flowchart versus pseudocode questions.
+
+For environments where a Sentence Transformers model is unavailable, the embedding layer falls back to a deterministic 384-dimensional hash embedding. That keeps the search workflow usable offline and keeps testable behavior available without relying on a model download.
+
+Quality is treated as part of the project rather than an afterthought. The custom quality runner has fast, full, report, mutation, and focused tool modes. The fast gate blocks on Ruff, MyPy, complexity checks, maintainability, Bandit, dependency auditing, and tests; the full gate adds coverage, dead-code reporting, documentation coverage, and import-boundary checks.
+
+The source is being prepared for public GitHub release. Once it is public, this page can link directly to the repository from the project card.

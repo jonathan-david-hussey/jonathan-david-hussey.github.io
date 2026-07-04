@@ -1,0 +1,91 @@
+---
+title: 'Twitter ingestion through an API migration'
+description: 'A queue-driven Twitter ingestion system that kept refresh, backfill, pagination and downstream compatibility separate while the platform moved from legacy API shapes to Twitter v2.'
+category: 'case-studies'
+tags: ['C#', '.NET 6', 'AWS ECS', 'AWS Lambda', 'SQS', 'Kinesis', 'SQL Server', 'Elasticsearch', 'TPL Dataflow', 'Polly']
+order: 4
+---
+
+*Senior Software Engineer · 2019 - 2024*
+
+**At a glance**
+
+- Restored a capped ingestion yield from 6.25% to 100%
+- 560k Twitter IDs scheduled in about 210 seconds
+- Priority backfill scheduler processed 5,000 IDs every 5 minutes
+
+## The situation
+
+The platform depended on Twitter data for search, reporting and influencer profiles. That meant the ingestion system had to keep hundreds of thousands of accounts fresh, pull new posts without wasting API calls, backfill important gaps, and preserve compatibility with downstream systems already built around an older tweet JSON shape.
+
+The hard part was not the initial download. It was keeping the whole loop healthy under API limits: deciding who really needed a refresh, paginating until the useful range was exhausted, prioritizing urgent backfills without starving normal refreshes, and migrating to Twitter v2 without forcing every downstream consumer to change at once.
+
+## The shape of the system
+
+The system is a set of cooperating loops, not a single batch job.
+
+```text
+user refresh scheduler
+  -> candidate queue
+  -> refresh validator
+  -> tweet ingester queue
+  -> ECS tweet ingester
+  -> Kinesis tweet stream
+  -> last-tweet/status update Lambdas
+
+backfill scheduler
+  -> priority queue
+  -> same ECS tweet ingester
+
+ingestion-status scheduler
+  -> status queue
+  -> Search API status updater
+  -> SQL status tables
+```
+
+The refresh scheduler reads the oldest eligible accounts from SQL Server and pushes candidate IDs to SQS in batches of ten. The validator then asks a cheaper question before scheduling expensive work: has the account's tweet count or most-recent tweet changed since the last check, and is the account still accessible? Only then does it create a media download request.
+
+That small gate matters. It keeps the download workers focused on accounts with new data rather than cycling through every account on every pass.
+
+## Pagination as a first-class concern
+
+The tweet ingester is an ECS task that scales from zero when either the normal queue or priority queue has work. Its processor turns a download request into a bounded time window: if the request has no explicit IDs, fake tweet IDs are generated from timestamps, normally covering the searchable retention window. If the caller accidentally reverses the oldest and newest IDs, the processor swaps them before calling the API.
+
+After each download, the parser calculates the minimum and maximum tweet IDs returned. If tweets were found and the minimum ID is still newer than the requested oldest ID, the ingester requeues the same user with a lower max ID. That continuation rule is the guardrail:
+
+```text
+download window
+  -> parse min/max tweet IDs
+  -> push tweets to Kinesis
+  -> if more history remains, requeue with max = min - 1
+```
+
+The reason this was treated so carefully was hard-won. A long-lived production defect in this area had silently capped data yield at 6.25% per request. Fixing the pagination path restored the intended yield to 100%, which lifted search quality, reporting accuracy and profile completeness across the product.
+
+## Priority without starvation
+
+Backfill is a different kind of work. It is usually more urgent than routine refresh, but it should not permanently starve the normal queue. The solution was a priority consumer rather than a separate ingestion path.
+
+Backfill candidates are tracked in their own state table. A scheduled Lambda prepares missing backfill records, evaluates which users need work, and pushes download requests to a priority queue. The same ECS ingester consumes both queues, using a configurable preference for the priority queue: by default, it attempts the priority queue three times before returning to the normal queue. If the priority queue is empty, it immediately falls back to normal refresh.
+
+That keeps recovery work fast without creating a second code path for downloading, parsing and publishing tweets.
+
+## Migrating to v2 without breaking consumers
+
+Twitter v2 changed the shape of tweet data. Rich tweet objects now arrive with `data`, `includes`, expansions, referenced tweets, media, polls, places and errors spread across related collections. Downstream systems, however, still expected the older v1-style status document.
+
+The parser package became the compatibility layer. It first splits a v2 timeline or lookup response into per-tweet response documents, attaching only the relevant includes for that tweet. Then a converter maps the v2 response into the older status model: top-level IDs and timestamps, public metrics, user fields, entities, media, replies, quotes, retweets, display text ranges and selected v2-only fields preserved under a dedicated extension object.
+
+One subtle problem was missing referenced tweets. A quote or retweet can point at a tweet that is not present in the original includes collection. The ingester detects those references, performs a lookup for the missing IDs, merges the result back into the response, and only then runs conversion. If a response cannot be safely converted, that user window is skipped rather than poisoning the stream.
+
+## Operating the pipeline
+
+The operational controls are visible in the design. SQS queues have dead-letter queues and age alarms. The ECS services scale out when queues contain messages and scale back to zero when they drain. The queue scheduler understands rate-limit exceptions and waits until the provider reset time before resuming. Kinesis writes are batched, failed records are retried, and the last-tweet updater stores the newest processed tweet ID per user so the next refresh has a clean starting point.
+
+The ingestion status loop runs separately because it depends on the search surface. A scheduler can enqueue hundreds of thousands of Twitter IDs, using TPL Dataflow to parallelize SQS batch sends. The updater deliberately processes one ID at a time per Lambda invocation and caps concurrency because the Search API has its own ceiling. That status table then guides future refresh and backfill decisions.
+
+## What this demonstrates
+
+This work was about moving a live ingestion platform without breaking its contract. The system separated decisions from downloads, backfill from normal refresh, provider API shape from internal document shape, and search-derived status from source-of-truth scheduling.
+
+That separation is why the pipeline could survive a provider migration, recover missing historical data, and fix a yield bug without forcing every downstream consumer to learn a new Twitter API all at once.

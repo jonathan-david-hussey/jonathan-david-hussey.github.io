@@ -1,0 +1,38 @@
+---
+title: 'Ken'
+description: 'A Flutter study app and Python ingestion pipeline that turns PDFs into verified multiple-choice question banks with extracted terms, source citations, page references, and local practice analytics.'
+category: 'projects'
+tags: ['Flutter', 'Dart', 'Python', 'PyMuPDF', 'Riverpod', 'Drift', 'SQLite', 'Sentence Transformers', 'spaCy', 'LLM']
+order: 2
+---
+
+*Author · 2026 -*
+
+**At a glance**
+
+- 9 bundled books with 15,457 generated questions across 129 chapters
+- 6-stage per-chapter pipeline from term candidates to assembled app bank
+- 90% default knowledge-point coverage target for generated question batches
+
+Ken is a knowledge-system experiment that turns a source PDF into a studyable multiple-choice question bank, then drills that bank in a cross-platform Flutter app. The current phase uses generated JSON banks and bundled assets; the architecture notes keep the path open for an API, ingestion worker, PostgreSQL with pgvector, and Elasticsearch later.
+
+The app is more than a static quiz viewer. It starts from a book library, loads each selected bank, and supports whole-book practice, per-chapter practice, timed sessions, weakest-first practice, and focus mode for retrying wrong answers until they are correct. Questions carry hints, explanations, tags, difficulty, chapter metadata, source citations, and page references.
+
+The practice loop tracks the details that make the app useful as a learning tool: selected answers, answer changes, hint usage, reference opens, elapsed time, pause/resume state, and whether each answer was correct. On the web, Drift uses IndexedDB-backed SQLite storage for sessions and events, while the app also keeps local history for weakest-question selection and resumable study state.
+
+The PDF pipeline is designed to be subject-agnostic. A single `build_book.py --pdf ...` flow derives the book id, bootstraps metadata, builds a source profile, generates questions for detected chapters, renders page and cover assets, publishes a per-book bank, and updates the Flutter app's library index. Each book writes to its own data tree and cache prefix so generated content does not cross-contaminate between sources.
+
+Per chapter, the generation process is staged and resumable:
+
+1. extract candidate terms without an API call
+2. cluster and deduplicate candidate terms with embeddings
+3. use an LLM judge to produce the chapter tag vocabulary
+4. generate MCQs against uncovered knowledge points
+5. run a coverage check against the generated questions
+6. assemble the app-ready bank with chapter titles, citations, and tags
+
+The MCQ generator does not ask for a fixed number of questions. It enumerates atomic knowledge points on each page, targets the uncovered points, and loops until embedding-similarity coverage reaches the configured target. Each generated question must include a verbatim source quote, and the verifier checks for citation grounding, meta-framing, non-English text, answer-length outliers, duplicate stems, and other failure modes before questions are accepted.
+
+The term extraction path combines library-backed signals rather than hand-written domain lists. It uses spaCy noun chunks and POS-aware tokens, scikit-learn TF-IDF, YAKE keywords, KeyBERT semantic relevance, wordfreq common-language scoring, and NLTK fallback tokenization. Those terms become both the vocabulary reviewed by the pipeline and the tags attached to questions in the assembled bank.
+
+The source is being prepared for public GitHub release. Once it is public, this project page can link directly to the repository from the project card.

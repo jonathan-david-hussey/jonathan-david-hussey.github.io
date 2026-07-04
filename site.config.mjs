@@ -1,13 +1,15 @@
 const site = {
-  name: 'Compass',
-  title: 'Compass Docs Theme',
-  description: 'A clean Astro documentation theme with MDX content, fast navigation, and Tailwind CSS styling.',
-  siteUrl: 'https://compass-lilac-tau.vercel.app',
+  name: 'Jonathan Hussey',
+  title: 'Jonathan Hussey — Staff Software Engineer / Software Architect',
+  description:
+    '.NET architecture, cloud-native systems, and AI-enabled platforms — projects, engineering case studies, and 14+ years of experience.',
+  siteUrl: 'https://jonathan-david-hussey.github.io',
   ogImage: '/og-image.png',
-  githubUrl: 'https://github.com/andreialba/compass',
-  navCtaLabel: 'View Repository',
-  navCtaHref: 'https://github.com/andreialba/compass',
-  footerText: 'Compass is an Astro docs theme built for product and support documentation.',
+  githubUrl: 'https://github.com/jonathan-david-hussey',
+  navCtaLabel: 'GitHub',
+  navCtaHref: 'https://github.com/jonathan-david-hussey',
+  footerText:
+    'Jonathan Hussey — Staff Software Engineer / Software Architect. .NET, cloud-native, and AI-enabled platforms.',
 };
 
 export default site;

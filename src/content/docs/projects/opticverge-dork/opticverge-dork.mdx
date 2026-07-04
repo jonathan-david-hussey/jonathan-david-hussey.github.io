@@ -1,0 +1,31 @@
+---
+title: 'Opticverge.Dork'
+description: 'A .NET knowledge orchestration platform and CLI for turning source files and personal documents into LLM-ready context, searchable knowledge records, and cited study-guide plans.'
+category: 'projects'
+tags: ['C#', '.NET 10', 'ASP.NET Core', 'Aspire', 'EF Core', 'PostgreSQL', 'pgvector', 'OpenTelemetry', 'Python', 'pypdf']
+order: 3
+---
+
+*Author · 2026 -*
+
+**At a glance**
+
+- 10-project Clean Architecture solution with API, worker, parser, Aspire host, CLI, and tests
+- 12 public /v1 API endpoints for sources, ingestion, documents, search, study guides, and system profile
+- 6-stage durable ingestion pipeline from fingerprinting to PostgreSQL FTS and embedding rows
+
+Opticverge.Dork started as a CLI for packaging repository context for LLMs, then grew into a local knowledge orchestration platform for personal document collections. The CLI scans a codebase, enriches files with Git metadata, filters by contributor and extension, strips noise such as C# single-line comments, converts HTML to Markdown, and writes a single Markdown context file for downstream model work.
+
+The platform layer takes the same core idea further: ingest, parse, index, search, and plan study guides over local knowledge sources. The solution follows Clean Architecture and Domain-Driven Design, with separate Domain, Application, Infrastructure, API, worker, parser, Aspire, service-defaults, CLI, and test projects.
+
+The local Aspire topology runs an ASP.NET Core API, an ingestion worker, PostgreSQL with pgvector, Apache Tika, and a Dockerfile-built Python parser service. OpenSearch and Qdrant are modeled as opt-in future resources, while the v1 write path keeps PostgreSQL as the canonical relational, JSON metadata, full-text search, and vector store.
+
+The ingestion worker claims durable jobs from PostgreSQL and processes them idempotently. Its six stages fingerprint the source, extract metadata, extract page text and artifacts, map pages into useful sections while suppressing low-value pages, generate tags and concepts, and persist canonical records, FTS rows, and embeddings.
+
+The Python parser service exposes `/health` and `/parse`, uses `pypdf` when available, emits parse manifests, page artifacts, page classifications, sections, and keyword-style tags, and falls back to text extraction when a richer parser is unavailable. A .NET fallback parser client sits behind the same application abstraction.
+
+Search is exposed through `/v1/search` and currently ranks PostgreSQL-backed chunk candidates with lexical rank, tag overlap, and section quality. The study-guide planner uses search results to build objective-oriented sections with query variants, page-selection rules, and candidate cited sources, then persists the plan for later retrieval.
+
+The project also treats architecture and maintainability as first-class constraints. ArchUnitNET tests enforce layer isolation, infrastructure convention tests keep persistence ownership disciplined, and analyzer gates enforce thresholds for cyclomatic complexity, cognitive complexity, method size, file length, nesting depth, parameter count, and related maintainability metrics.
+
+The source is being prepared for public GitHub release. Once it is public, this project page can link directly to the repository from the project card.

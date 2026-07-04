@@ -21,9 +21,13 @@ const suggestedArticles = getSuggestedSearchArticles(publicDocs);
 const searchPreviews = getSearchPreviewLookup(publicDocs);
 ---
 
-<Layout title={`${site.title} | Astro docs theme`} description={site.description}>
+<Layout title={site.title} description={site.description}>
   <SearchPreviews previews={searchPreviews} />
-  <SearchHero suggestions={suggestedArticles} />
+  <SearchHero
+    suggestions={suggestedArticles}
+    title="Jonathan Hussey — Software Architect"
+    placeholder="Search projects, case studies, experience..."
+  />
 
   <div class="py-8 md:py-10">
     {

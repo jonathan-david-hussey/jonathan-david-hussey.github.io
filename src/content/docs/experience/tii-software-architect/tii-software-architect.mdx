@@ -1,0 +1,18 @@
+---
+title: 'Software Architect — Technology Innovation Institute'
+description: 'Owning the architecture of an internal platform rebuild on .NET 9: event-driven workflow engine, SAP integrations, and CI/CD introduced from zero.'
+category: 'experience'
+tags: ['C#', '.NET 9', 'EF Core', 'SQL Server', 'Wolverine', 'Hangfire', 'FusionCache', 'GitLab CI/CD', 'Serilog', 'xUnit']
+order: 1
+---
+
+*Abu Dhabi, UAE · Hybrid · Contract · Jun 2025 – Mar 2026*
+
+- Own the architecture of an internal platform rebuild while staying hands-on in an agile team: the team's first ASP.NET Core Web API platform on .NET 9 — clean architecture, 50+ versioned endpoints, 30+ domain entities, and seven SAP integrations behind resilient HTTP clients kept in sync by scheduled background jobs.
+- Designed the event-driven workflow engine behind multi-step approvals: a finite state machine whose every transition is published through Wolverine's durable, SQL-backed queues with inbox/outbox semantics — so approvals, notifications and emails survive restarts and retry cleanly instead of getting lost mid-flight.
+- Built the platform's event management and notification stack — templated emails rendered with Fluid and dispatched off workflow events, plus a normalised application-error event that carries correlation IDs through the message pipeline and hands off to any alerting sink (email today; Teams or a monitoring system without touching producers).
+- Untangled a legacy WebForms application through a strangler-fig migration — packaged the bridge as a backward-compatible .NET Standard 2.0 NuGet library so nothing broke while pieces moved across.
+- The team had no version control or pipelines when I arrived. Set up GitLab with build, test and publish stages, JUnit-reported test runs and artifact promotion across environments, then layered structured logging and health checks on top so production issues could actually be traced.
+- Review every merge request and run the technical design sessions; embedded agentic coding tools — Claude Code, OpenAI Codex, GitHub Copilot — into the team's daily workflow for scaffolding, test generation and refactoring.
+
+**Related case studies:** [SAP synchronisation](/showcase/case-studies/sap-synchronisation) · [Governance approval emails](/showcase/case-studies/workflow-governance-emails)

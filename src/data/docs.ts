@@ -1,43 +1,43 @@
 export const docsParentCategories = [
   {
-    slug: 'getting-started',
-    name: 'Getting Started',
-    description: 'Set up Compass, learn the content model, and publish your first docs updates.',
+    slug: 'showcase',
+    name: 'Showcase',
+    description: 'Personal projects with source, and engineering case studies from professional work.',
   },
   {
-    slug: 'integrations',
-    name: 'Integrations',
-    description: 'Extend Compass with analytics, editorial systems, and optional tools around your docs workflow.',
+    slug: 'career',
+    name: 'Career',
+    description: 'Fourteen-plus years of roles, and the background behind them.',
   },
 ] as const;
 
 export const docsCategories = [
   {
-    name: 'Start Here',
-    slug: 'start-here',
-    parent: 'getting-started',
-    description: 'Install the project, understand the file structure, and shape your first publishing workflow.',
-    icon: 'flag',
-  },
-  {
-    name: 'Compass Docs',
-    slug: 'compass-docs',
-    parent: 'getting-started',
-    description: 'Manage article collections, sidebar structure, and search-friendly content patterns.',
-    icon: 'file',
-  },
-  {
-    name: 'Components',
-    slug: 'components',
-    parent: 'getting-started',
-    description: 'Build reusable callouts, headings, and content blocks that make docs feel polished and consistent.',
+    name: 'Projects',
+    slug: 'projects',
+    parent: 'showcase',
+    description: 'Personal builds across C#/.NET, Python, TypeScript and more — each with a write-up of what it does and how.',
     icon: 'spark',
   },
   {
-    name: 'Channels & Apps',
-    slug: 'channels-and-apps',
-    parent: 'integrations',
-    description: 'Cover analytics, CMS-backed editing, embedded support surfaces, and other tools around your docs.',
+    name: 'Case Studies',
+    slug: 'case-studies',
+    parent: 'showcase',
+    description: 'Engineering stories from professional work: the problem, the constraints, the architecture, and the measured outcome.',
+    icon: 'file',
+  },
+  {
+    name: 'Experience',
+    slug: 'experience',
+    parent: 'career',
+    description: 'Roles from web developer to software architect — what each one involved and what shipped.',
+    icon: 'flag',
+  },
+  {
+    name: 'About',
+    slug: 'about',
+    parent: 'career',
+    description: 'Bio, education, and the technologies used across this site.',
     icon: 'grid',
   },
 ] as const;
@@ -163,7 +163,7 @@ export function getSearchPreviewLookup(docs: SearchSuggestionSource[]) {
 
 export function getSuggestedSearchArticles(
   docs: SearchSuggestionSource[],
-  { limit = 4, categories = ['start-here'] }: { limit?: number; categories?: string[] } = {},
+  { limit = 4, categories = ['case-studies', 'projects'] }: { limit?: number; categories?: string[] } = {},
 ): SearchSuggestion[] {
   const allowedCategories = new Set(categories);
 

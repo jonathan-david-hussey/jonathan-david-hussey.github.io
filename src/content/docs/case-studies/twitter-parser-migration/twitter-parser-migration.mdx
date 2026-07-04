@@ -1,0 +1,84 @@
+---
+title: 'Twitter parser bridge for a v2 migration'
+description: 'A .NET Standard parser library that split Twitter v2 API responses into per-tweet documents and converted them into the platform''s legacy v1 Status shape using feature-derived display-range rules.'
+category: 'case-studies'
+tags: ['C#', '.NET Standard 2.0', 'Newtonsoft.Json', 'xUnit', 'AutoFixture', 'FluentAssertions', 'Twitter API v2', 'NuGet']
+order: 6
+---
+
+*Senior Software Engineer · 2019 - 2024*
+
+**At a glance**
+
+- Extraction rules derived from millions of tweets sampled over 2 years
+- 298 JSON fixtures, including 227 display-text-range fixtures
+- NuGet package targeting netstandard2.0
+
+## The situation
+
+The platform had years of downstream code built around Twitter's v1 `Status` JSON shape. Search indexing, reporting, enrichment and ingestion workflows all knew how to read that document. Twitter v2 changed the contract: tweet data arrived as `data`, `includes`, referenced tweets, users, media, polls, places and errors spread across related collections.
+
+The migration problem was not just "rename fields." A v2 timeline response can contain many tweets, and each tweet can depend on different users, media, places, polls and referenced tweets. The old platform needed one coherent v1-style document per tweet, with enough nested structure preserved that downstream systems did not have to learn v2 all at once.
+
+The parser library became the compatibility bridge.
+
+## The shape of the library
+
+The package was built as a `.NET Standard 2.0` library with a NuGet package definition. It exposed a small service surface for converting one v2 tweet response or a v2 tweets response into v1-style JSON, while keeping the heavier conversion logic inside domain services.
+
+```text
+Twitter v2 timeline / lookup response
+  -> split into per-tweet v2 responses
+  -> attach relevant includes and errors
+  -> detect tweet type
+  -> extract tweet features
+  -> derive display_text_range
+  -> convert into v1 Status JSON
+```
+
+The first boundary was response extraction. A Twitter v2 timeline response includes shared `includes` collections, but downstream conversion is easier when each tweet has its own response document. The `V2TweetService` builds a dictionary keyed by tweet ID. For each tweet it attaches the tweet itself, referenced tweets, users, media, places, polls and matching errors relevant to that tweet.
+
+That step is what let the converter operate on one tweet at a time without losing the context needed for quotes, retweets, replies and attachments.
+
+## Conversion as a contract
+
+The converter maps v2 data into the older `Status` model through focused field converters. Top-level fields handle IDs, timestamps, language, text, source and public metrics. User conversion rebuilds screen name, profile counts, profile URLs, withheld countries and user entities. Entity converters rebuild hashtags, symbols, mentions, URLs, media and polls. Geo and place converters restore location-shaped data where v2 provides it.
+
+Some v1 fields no longer existed in v2, so the converter deliberately set them to `null` or safe defaults instead of guessing. Some v2 fields had no v1 home, so they were preserved under a dedicated `V2` extension object: impression count, bookmark count and conversation ID. The converted document could therefore satisfy legacy consumers while still carrying useful v2-only data forward.
+
+Quotes and retweets were recursive. A quoted tweet or retweeted status could be rebuilt by passing the referenced v2 tweet back through the same converter, with a maximum recursion depth to avoid runaway nesting. That mattered for real timeline data, where a quote can reference a tweet that itself references another tweet.
+
+## Display range rules
+
+The hardest field was `display_text_range`. The value was removed or changed across API formats, but downstream display and indexing behavior still depended on it. The rules for this extraction were derived from machine-learning analysis over millions of tweets sampled across a two-year window, then encoded as explicit feature-based detectors.
+
+The code first detects whether the response is a normal tweet, reply, quote or retweet. Then it extracts features from the tweet text:
+
+```text
+starts with handle
+reply handle at start or end
+has media
+has URL
+ends with external URL
+tweet references itself
+consecutive handles
+consecutive URLs
+language code
+surrogate-pair-aware text length
+```
+
+Replies use an ordered detector chain because replies are where display ranges are most ambiguous. The detectors cover combinations such as "starts with handle and ends with URL," "does not start with handle but has media," "reply handle appears at the end," and language-specific exceptions. A catch-all detector remains last in the chain so unusual tweet shapes still produce a bounded range.
+
+The important engineering choice was to make the learned behavior inspectable. The production rule set is deterministic C# rather than an opaque model call, which means a failed tweet can be debugged by looking at its extracted features, detector match and fixture.
+
+## Testing the edge cases
+
+The fixture suite reflects the migration risk. The repo contains 298 JSON fixtures, including 227 display-text-range fixtures and 51 v2-to-v1 converter fixtures. The converter tests compare expected v1 JSON against converted v2 JSON for replies, retweets, quotes, normal tweets and nested references. Display-range tests cover emoji-only tweets, non-ASCII text, many handles, many URLs, media URLs, external links, self-references, language-code exceptions and ambiguous reply structures.
+
+There are also broader parser tests for splitting v2 responses: referenced tweets, missing errors, mentions, geolocation, attachments, polls, user timelines, retweet-plus-quote responses and recursive merged responses. Integration tests can run over folders of sampled tweets to catch parser drift when new tweet shapes appear.
+
+## What this demonstrates
+
+This work was about reducing migration blast radius. Instead of forcing every downstream service to consume Twitter v2 immediately, the parser gave the platform a stable compatibility layer: v2 in, v1-shaped status out, with v2-only data preserved where it mattered.
+
+It also shows a practical way to turn exploratory analysis into maintainable production code. Machine-learning analysis helped find the patterns; the shipped system encoded those patterns as small, testable rules with real tweet fixtures around the strange cases. That is the kind of migration work that keeps a platform moving without asking every team to cross the bridge at the same time.

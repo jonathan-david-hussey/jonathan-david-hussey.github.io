@@ -1,0 +1,107 @@
+---
+title: 'Real-time and program-insights email reporting'
+description: 'A serverless reporting pipeline for time-sensitive stream reports and weekly program-insights emails: schedule normalization, branching SQS queues, S3 report artifacts, SES templates and callback tracking.'
+category: 'case-studies'
+tags: ['C#', '.NET 6', 'AWS Lambda', 'SQS', 'S3', 'SES', 'SNS', 'Elasticsearch', 'SQL Server', 'Polly']
+order: 5
+---
+
+*Senior Software Engineer · 2019 - 2024*
+
+**At a glance**
+
+- Real-time reports isolated on a dedicated generate-data queue
+- Program insights compare the current period with the previous 7 days
+- Generated JSON and rendered HTML persisted to S3 per schedule run
+
+## The situation
+
+A social-media intelligence platform needed email reports that behaved differently depending on the client's intent.
+
+Real-time reports were operational: "tell me when matching content appears." They needed short, repeatable windows, tolerance for ingestion delay, and a clean skip path when no posts existed. Program-insights reports were analytical: "summarize how a program changed over the week." They needed current-versus-previous-period comparisons, topic trends, most-engaged influencers, and a different email template.
+
+Both paths shared the same durable delivery pipeline, but they could not be treated as the same job. The design split scheduling and data generation by report type, then converged again for artifact storage, templated send, callback handling and engagement tracking.
+
+## The shape of the system
+
+The core pipeline is a queue-backed chain of small stages.
+
+```text
+real-time report scheduler
+program-insights scheduler
+  -> report processor queue
+  -> report processor Lambda
+  -> generate-data queue / real-time generate-data queue
+  -> generate-data Lambda
+  -> S3 JSON artifact
+  -> email queue
+  -> send-email Lambda
+  -> SES bulk templated email
+
+SES callbacks
+  -> SNS
+  -> callback queue -> status updates + Elasticsearch email logs
+  -> ChurnZero queue -> customer-success activity tracking
+
+preview notification
+  -> preview processor
+  -> report processor queue
+```
+
+The report processor creates a run request, attaches the `RunId` to the message, and then branches on report type. Real-time schedules are routed to a dedicated real-time generate-data queue. Program-insights schedules use the standard generate-data queue. The two generate-data Lambda event sources both process one message at a time and cap concurrency at two, which keeps expensive Search API work bounded and makes failures easy to isolate by schedule run.
+
+## Real-time reports
+
+Real-time scheduling is deliberately windowed. The scheduler rounds the current UTC time down to the nearest 15-minute interval, then shifts the query window back by a minimum 15-minute ingestion buffer. In practice, a scheduler tick around `12:06` normalizes to `12:00`, searches `11:30` to `11:45`, and leaves the most recent 15 minutes alone so late-arriving tweets can still be captured on the next run.
+
+The real-time generate-data path uses the stream report generator. It fetches the selected topics and influencers, builds account maps for the configured channels, asks the Search API for matching Twitter and website posts, prepares post HTML, and records influencer activity for posts that appeared in the report.
+
+If there are no posts and the request is not a preview, the send-email stage skips the real-time email. That is an important product behavior: the pipeline can run frequently without training clients to ignore empty alerts.
+
+## Program insights
+
+Program insights are generated on a weekly analytical cadence. The scheduler checks the configured day and hour in the schedule's timezone and prevents another run until at least seven days have passed. When a schedule is due, it finds the most recent Saturday boundary and builds a reporting window from the previous Saturday at midnight through Friday at `23:59:59.999`.
+
+The program-insights generator is heavier than the real-time stream path. It loads the program topics and influencer IDs, validates that the program has topics, influencers and Twitter account IDs, and builds the program query used by the Search API. It then compares current and previous periods across several sections:
+
+```text
+current program overview + previous program overview
+current trending topics + previous trending topics
+most-engaged influencers
+influencer topic engagement
+topic tag mapping for category names
+```
+
+The view model builder turns those responses into the email sections: top trending topics, most-engaged influencers, per-influencer topic engagement and program-overview changes. Before doing the full request, the generator validates topic queries with a small Search API call so a bad topic shape fails the schedule cleanly instead of producing a broken template.
+
+Search calls are wrapped with a Polly retry proxy. Transient Search API failures retry with the configured backoff, while expected data-generation exceptions exit the retry cycle immediately. That distinction matters because "try again later" and "this program is not valid for insights" need different operational behavior.
+
+## Sending without losing the audit trail
+
+Both report paths produce a durable artifact before any email is sent. The generate-data Lambda writes the report JSON to S3 under a path containing the schedule ID and run ID, then queues the send-email stage.
+
+The send-email Lambda reads that JSON artifact and turns it into a templated SES request. If a message has a future `SendUTCDate`, it requeues the message with a delivery delay instead of sleeping. Real-time reports skip when empty. Program-insights reports switch to the `_program-insights` SES template.
+
+Before sending, the service asks SES to render the template and saves that rendered HTML back to S3 as `RenderedTemplate-{runId}.html`. Then it sends a bulk templated email with tags for schedule ID, preview status and environment. The response is written back to the database with per-recipient message IDs and errors, so callbacks can be reconciled to the original schedule run.
+
+The non-production path is guarded too. An override email setting can reroute all recipients and BCC addresses in staging-like environments, which lets the same pipeline be tested without accidentally emailing real clients.
+
+## Closing the loop
+
+Sending the message is not the end of the report. SES delivery, bounce and complaint events arrive through SNS and are processed from queues. The callback processor looks up stored send requests by SES message ID, updates request status, transforms the notification into an email-log document, and bulk-indexes it into a month-based Elasticsearch index.
+
+A separate ChurnZero processor consumes the same callback topic through its own queue. It transforms recipient events, matches recipients back to platform users and Salesforce IDs, then sends customer-success activity events. That keeps email engagement useful outside the reporting subsystem without coupling the send-email Lambda to an external tracking API.
+
+Preview sends use the same downstream machinery. The preview processor loads a schedule, marks it as preview, applies preview time-window rules for real-time reports, generates the same schedule payload and sends it to the report processor queue. After queuing, it marks the preview as picked. That means preview behavior exercises the real pipeline rather than a separate rendering shortcut.
+
+## Designed for recovery
+
+The important design choice was to make every stage replayable. The report queue owns scheduling, the generate-data queues own expensive data work, S3 owns generated artifacts, the email queue owns delivery timing, and callback queues own post-send state. Each queue has a dead-letter queue, and the long-running stages have explicit batch sizes, timeouts and concurrency limits.
+
+That shape made the system easier to reason about than a single workflow. A failed Search API call did not erase a scheduled run. A send problem did not require regenerating report data. A callback failure did not affect delivery. And real-time reports could have their own fast path without forking the delivery and tracking systems that program insights also depended on.
+
+## What this demonstrates
+
+This work was about making two very different reporting promises share one operable backend. Real-time reports needed bounded windows, ingestion-delay awareness and empty-send suppression. Program insights needed weekly comparison data, validation and a richer analytical template. Both needed durable artifacts, traceable sends and post-send feedback.
+
+That is the kind of backend product work I enjoy: small units of work, durable handoffs, clear failure boundaries and enough observability that support questions can be answered from the system itself.

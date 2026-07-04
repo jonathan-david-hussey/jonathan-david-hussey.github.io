@@ -1,0 +1,59 @@
+---
+title: 'Governance approvals that never lose an email'
+description: 'An event-driven approval workflow built on a finite state machine, where notification emails are selected from database-mapped templates, rendered with Fluid, dispatched through durable queues, and audited like everything else.'
+category: 'case-studies'
+tags: ['C#', '.NET 9', 'Wolverine', 'Fluid', 'MailKit', 'EF Core', 'SQL Server']
+order: 2
+---
+
+*Software Architect · 2025 – 2026*
+
+**At a glance**
+
+- Every transition, notification and error persisted as an audit row
+- 7 email template types mapped in data, not code
+- Stuck workflows recoverable through replay endpoints
+
+## The situation
+
+Project governance at a research institute runs on multi-step approvals: a project proposal moves through an ordered chain of approvers, any of whom can approve, reject, or send it back for changes. Each of those moments needs the right people told, by email, reliably — the initiator when their proposal advances, the next approver when it lands on their desk, finance when a project is created.
+
+Email is where systems like this usually rot. Notifications get sent inline from controller code, fail silently when SMTP hiccups, and nobody can say afterwards whether the approver was ever actually told. The design goal was blunt: **no lost emails, and proof either way.**
+
+## A state machine that leaves footprints
+
+The engine is a finite state machine persisted in SQL Server. A workflow instance carries a headline status (`Submitted`, `Approved`, `RequestForChange`, `Completed`, `Rejected`, `Error`), but the real source of truth is the activity stream: every action, transition, notification and error writes an immutable activity row against the instance.
+
+That choice earns its keep in the transition handler. Rather than trusting the instance's headline status, routing inspects the *latest action activity* and dispatches from that — which makes transitions replayable, because the decision input is durable history rather than mutable state.
+
+Commands are deliberately thin: the HTTP endpoint writes the immediate state change to the database, publishes an event to Wolverine's durable, SQL-backed queues, and returns. Everything that can be slow or can fail — advancing approvers, building emails, talking to SMTP, syncing to SAP on completion — happens asynchronously behind the inbox/outbox, where a crash means redelivery instead of loss.
+
+The request-for-change loop was the subtle part. When an approver asks for changes, the workflow must bounce to the initiator and back *without moving backward through the approval chain*. The stage stays put; the latest action activity (`RequestForChange` vs `Updated`) decides whether the next pending task — and the next email — belongs to the initiator or the approver.
+
+## Emails as data, not code
+
+Which email goes out is a database mapping, not a switch statement buried in a handler: workflow type plus action status resolves to a **parent template** (the shared layout shell) and a **child template** (the situational content — created, approved, rejected, request-for-change, change-updated, completed, and a finance-specific variant for new projects). Adding or retargeting a notification is a data change.
+
+The notification handler selects the applicable template types, dedicated builders assemble each message (recipients resolved from the approver chain, model built from workflow state), and templates render through Fluid — safe Liquid templating, so content editors can't execute code. Sending is the last, most isolated step:
+
+```text
+transition event
+  → notification handler        (which templates apply?)
+  → per-outcome email builders  (recipients + model)
+  → Fluid render                (parent layout + child content)
+  → send-email event            (sequential durable queue)
+  → SMTP dispatch
+  → notification + activity rows persisted
+```
+
+Send events ride a *sequential* local queue — ordering preserved, no interleaved bursts at the mail server. Each dispatch persists the serialized outbound payload and a `Notified` activity, so "was the approver emailed, and what exactly did we send?" is a query. A test-address setting redirects all mail in non-production environments, which means the full pipeline is exercisable without ever emailing a real executive from staging.
+
+Failures follow one road. Any handler that breaks emits a workflow error event; its handler marks the instance, writes an error activity, then raises a normalised application-error event carrying the correlation ID — which is logged, emailed to operators today, and shaped to hand off to an alerting sink (Teams, monitoring) by adding a handler, not touching producers.
+
+## Designed to be operated
+
+Every pipeline stage is also exposed as a guarded Wolverine HTTP endpoint (`/event/workflow/…`), with a documented replay order. A workflow stuck after a manual data fix, a notification that never fired, an email that needs rebuilding from current state — each is a one-call recovery, using the same handlers production uses. The system assumes a human will someday need to nudge it, and makes the nudge safe.
+
+## What this demonstrates
+
+Treating notifications as first-class domain events — durable, audited, data-driven — rather than side effects. The same architecture that guarantees delivery also produced the operational story: because every decision reads from persisted history, any step can be replayed, and because every send leaves a record, every "did they get it?" has an answer.

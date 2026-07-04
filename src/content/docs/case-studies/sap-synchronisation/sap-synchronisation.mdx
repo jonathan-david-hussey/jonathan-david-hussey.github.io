@@ -1,0 +1,62 @@
+---
+title: 'Keeping an R&D portal and SAP in agreement, both ways'
+description: 'A durable, event-driven synchronisation layer between an internal governance platform and SAP: six inbound OData feeds, outbound project reconciliation, and an audit ledger for every run.'
+category: 'case-studies'
+tags: ['C#', '.NET 9', 'Wolverine', 'Hangfire', 'EF Core', 'SQL Server', 'SAP OData', 'Polly']
+order: 1
+---
+
+*Software Architect · 2025 – 2026*
+
+**At a glance**
+
+- 7 SAP domains synchronised
+- Bidirectional: 6 inbound feeds + outbound reconciliation
+- Every run auditable: request, response, status, attempts
+
+## The situation
+
+An internal R&D governance platform needed to agree with SAP about money and people: internal orders, GL accounts, profit centres, cost centres, utilization and manpower figures all live in SAP, while project records originate in the portal. Before this work, that agreement was manual. Finance data went stale, and newly approved projects had to be keyed into SAP by hand.
+
+Two extra constraints shaped the design. The data had to move on a schedule *and* on demand — finance wanted a nightly refresh, but users needed a button. And a failed sync couldn't just vanish into a log file; someone had to be able to answer "did last night's refresh run, what did it send, and what came back?"
+
+## The shape of the solution
+
+One pipeline, two triggers. A Hangfire recurring job fires nightly and a `POST /sync/refresh` endpoint serves the button — both do nothing except publish the same `GlobalRefreshEvent`. Hangfire stays a scheduler and operator dashboard; it knows nothing about SAP. All actual work happens in Wolverine's durable, SQL-backed message pipeline.
+
+```text
+Hangfire (nightly)  ─┐
+                     ├─> GlobalRefreshEvent
+Manual API trigger ──┘        │
+                              ▼
+                    GlobalRefreshHandler
+              one sync ledger row per entity
+                              │
+              StartRefreshEvent  (fan-out)
+                              │
+          per-entity ProcessRefresh handlers
+                              │
+        SAP client → mapping → bulk upsert
+                              │
+                    RefreshCompletedEvent
+```
+
+The fan-out point creates one ledger row per entity, each seeded `Pending`. Per-entity start handlers mark their row `Queued` and emit a process event; process handlers mark it `InProgress`, capture the serialized request, call the refresh service, and finish by recording either a completion (with the full response serialized alongside) or an error. Failure classification is retry-aware: the handler reads Wolverine's envelope attempt count and distinguishes "errored, will retry" from "failed, gave up".
+
+## Inbound: six feeds, one pattern
+
+Every inbound entity follows the same four-part pattern — an OData client, a `ToEntity()` mapping extension, a bulk-upsert repository, and a paging refresh service. The base client handles OData v2 mechanics (`$format`, `$inlinecount`, `$top`/`$skip`); the base service pages through results a hundred at a time using the server-reported count; the base repository bulk-upserts with per-entity match keys — order number for internal orders, account-plus-company-code for GL accounts, hashed composite IDs where SAP has no natural key (utilization rows hash eight fields).
+
+The payoff for that discipline is that adding a new SAP entity is a checklist, not a design exercise: a client, a mapper, a repository with its match key, and one line in the fan-out list.
+
+Cross-cutting concerns live in one place. A delegating handler on every SAP HTTP client deals with basic auth, content negotiation and — the part nobody wants to write twice — CSRF token acquisition for mutating calls. Resilience (exponential retry with jitter) is applied at client registration, not sprinkled through business code.
+
+## Outbound: projects flow the other way
+
+Projects invert the pattern. The portal is the source of truth — projects are born there through a governed approval workflow — so the sync *reconciles SAP against the portal*: load the current SAP project list, compare against locally approved projects, `POST` the missing ones, `PUT` the changed ones. Deliberately no deletes.
+
+There are two ways into this path. The nightly global refresh includes projects like any other entity. But when a project's approval workflow completes, the workflow's completion handler also emits an immediate sync event — so a newly approved project appears in SAP within moments of the final signature, without waiting for the night run.
+
+## What this demonstrates
+
+The interesting decisions here weren't about SAP; they were about failure. Making the scheduler dumb and the pipeline durable means a mid-sync crash resumes rather than restarts. Making every run write its own audit trail — request, response, status transitions, attempt counts — turned "did the sync work?" from a log-diving expedition into a table query. And making the inbound pattern boringly uniform meant the seventh entity cost a fraction of the first.
