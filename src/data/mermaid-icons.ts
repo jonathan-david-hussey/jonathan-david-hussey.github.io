@@ -45,6 +45,18 @@ export const iconPack = {
     terminal: {
       body: `<g ${stroke}><rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/></g>`,
     },
+    // Mobile app shell.
+    phone: {
+      body: `<g ${stroke}><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M10 6h4M11 18h2"/></g>`,
+    },
+    // Library / source books.
+    book: {
+      body: `<g ${stroke}><path d="M5 4.5A2.5 2.5 0 0 1 7.5 2H19v17H7.5A2.5 2.5 0 0 0 5 21.5z"/><path d="M5 4.5v17M8 6h7M8 9h6"/></g>`,
+    },
+    // Verified boundary / quality gate.
+    'shield-check': {
+      body: `<g ${stroke}><path d="M12 3l7 3v5c0 4.5-2.8 8.2-7 10-4.2-1.8-7-5.5-7-10V6z"/><path d="M8.5 12.2l2.1 2.1 4.9-5"/></g>`,
+    },
     // Stored searchable question index.
     database: {
       body: `<g ${stroke}><ellipse cx="12" cy="5.5" rx="6.5" ry="2.5"/><path d="M5.5 5.5v9c0 1.4 2.9 2.5 6.5 2.5s6.5-1.1 6.5-2.5v-9"/><path d="M5.5 10c0 1.4 2.9 2.5 6.5 2.5s6.5-1.1 6.5-2.5"/></g>`,
