@@ -1,0 +1,71 @@
+---
+# SHOWCASE ARTICLE TEMPLATE - copy into:
+#   src/content/docs/projects/<slug>/<slug>.mdx
+#   src/content/docs/case-studies/<slug>/<slug>.mdx
+#
+# All fields below are REQUIRED for categories 'projects' and 'case-studies':
+#   role, dates, roleSummary, metrics (>=2), decisions (>=3), outcome (>=1), lessons
+# The body must contain, in order: ## Context, ## The Problem, ## Constraints, ## The Design
+# (validated by scripts/validate-showcase.mjs). Titles and headings use Title Case.
+title: 'Title Case Article Name'
+description: 'One-sentence summary shown on cards and in search.'
+category: 'projects'
+tags: ['C#', '.NET']
+badges: []
+# Standardised showcase badges (boolean flags, default false = hidden until you verify):
+aiAssisted: false # shows the AI-Assisted badge with a robot icon
+reviewed: false # shows the Reviewed badge with a tick icon
+order: 100
+role: 'Author'
+dates: '20XX - 20XX'
+roleSummary: 'One or two sentences on what you personally owned and did.'
+metrics:
+  - 'Headline metric one'
+  - 'Headline metric two'
+decisions:
+  - title: 'Decision name'
+    detail: 'What you chose and why it was right for this system.'
+    tradeoff: 'What it cost - optional but strongly encouraged.'
+  - title: 'Second decision'
+    detail: '...'
+  - title: 'Third decision'
+    detail: '...'
+outcome:
+  - 'What measurably changed, one bullet per result.'
+lessons: 'The transferable pattern worth reusing, plus what you would do differently. One short paragraph.'
+---
+
+## Context
+
+The project or system and the need behind it - one or two paragraphs. For case studies, anchor this in the business or product context. For projects, anchor it in what the build is for.
+
+## The Problem
+
+What was broken, missing, risky, or worth exploring. Save the bullet-able limits for Constraints below.
+
+## Constraints
+
+- **Constraint name.** Why it shaped the design: quotas, source data, compatibility, testing, team maturity, runtime limits, or release state.
+- **Another constraint.** ...
+
+## The Design
+
+The architecture and how it works. Include a flow diagram when it helps:
+
+<Mermaid
+  title="Example flow"
+  direction="TD"
+  chart={`
+flowchart TD
+  Input["Input"]
+  StageA["Stage A"]
+  StageB["Stage B"]
+  Output["Output"]
+
+  Input --> StageA --> StageB --> Output
+`}
+/>
+
+### A Title Case Subsection Per Major Part
+
+Use specific subsection titles. This is the section that is allowed to differ most between articles.

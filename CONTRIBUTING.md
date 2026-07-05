@@ -29,6 +29,7 @@ npm run dev
 npm run build
 npm run preview
 npm run check
+npm run validate:content
 npm run format:check
 npm run clean
 ```
@@ -74,8 +75,27 @@ Optional frontmatter fields you can use when helpful:
 - `status` for lifecycle state; use `draft` or `archived` when a page should not publish
 - `editUrl` for contributor-facing edit links on article pages
 - `heroImage` for top-of-page article imagery
+- `aiAssisted` and `reviewed` booleans for the standard title-adjacent showcase badges
+- `badges` for any other short title-adjacent article labels
 - `hideFromSearch` for pages that should stay out of Pagefind results
 - `redirectFrom` for legacy routes that should point to the canonical article URL
+
+Use the `Mermaid` MDX component for editable diagrams. It renders a full-diagram overview in the article flow, then opens a larger draggable canvas when expanded so readers can inspect dense architecture diagrams:
+
+```mdx
+<Mermaid
+  title="Example flow"
+  direction="TD"
+  chart={`
+flowchart TD
+  A[Source] --> B[Pipeline] --> C[App]
+`}
+/>
+```
+
+Use `direction="TD"` or `direction="TB"` for top-to-bottom flows, `direction="LR"` for left-to-right architecture pipelines, and `direction="BT"` or `direction="RL"` only when the reverse reading order is intentional. The component rewrites `flowchart` and `graph` headings to the requested direction at render time. The optional `layout` prop can set Mermaid's layout engine hint; `dagre` is the bundled safe default, while `elk` should only be used after adding and verifying the external Mermaid ELK layout package.
+
+Showcase articles in `projects` and `case-studies` use a stricter shared structure. Start from `src/templates/showcase-article-template.mdx`; these pages must include `role`, `dates`, `roleSummary`, at least two `metrics`, at least three `decisions`, at least one `outcome`, and `lessons`. The body must keep these level-two headings in Title Case and in order: `Context`, `The Problem`, `Constraints`, `The Design`.
 
 ## Pull Request Notes
 
