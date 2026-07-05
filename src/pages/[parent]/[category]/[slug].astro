@@ -3,7 +3,12 @@ import { Image } from 'astro:assets';
 import { getCollection, render } from 'astro:content';
 import SearchPreviews from '../../../components/SearchPreviews.astro';
 import Sidebar from '../../../components/Sidebar.astro';
+import AtAGlance from '../../../components/docs/AtAGlance.astro';
+import Badge from '../../../components/docs/Badge.astro';
 import Card from '../../../components/docs/Card.astro';
+import DecisionList from '../../../components/docs/DecisionList.astro';
+import OutcomeBlock from '../../../components/docs/OutcomeBlock.astro';
+import ShowcaseMeta from '../../../components/docs/ShowcaseMeta.astro';
 import { mdxComponents } from '../../../components/docs/mdx-components';
 import {
   docsCategoryDataMap,
@@ -15,7 +20,6 @@ import {
   getPublicDocs,
   getSearchPreviewLookup,
   getSidebarSections,
-  getSuggestedSearchArticles,
 } from '../../../data/docs';
 import Layout from '../../../layouts/Layout.astro';
 
@@ -45,12 +49,23 @@ const currentDocIndex = orderedCategoryDocs.findIndex((entry) => entry.id === do
 const previousDoc = currentDocIndex > 0 ? orderedCategoryDocs[currentDocIndex - 1] : undefined;
 const nextDoc = currentDocIndex >= 0 ? orderedCategoryDocs[currentDocIndex + 1] : undefined;
 const sidebarSections = getSidebarSections(parent.slug);
-const suggestedArticles = getSuggestedSearchArticles(publicDocs, {
-  limit: 3,
-  categories: [doc.data.category],
-});
 const searchPreviews = getSearchPreviewLookup(publicDocs);
-const tocHeadings = headings.filter((heading) => heading.depth >= 2 && heading.depth <= 3);
+const isStructuredShowcase = doc.data.category === 'case-studies' || doc.data.category === 'projects';
+
+// Structured showcase data sections are rendered outside the MDX body, so
+// their headings are appended here to keep the "On this page" TOC complete.
+const showcaseHeadings = isStructuredShowcase
+  ? [
+      { depth: 2, slug: 'decisions-and-trade-offs', text: 'Decisions and Trade-Offs' },
+      { depth: 2, slug: 'outcome', text: 'Outcome' },
+      { depth: 2, slug: 'lessons', text: 'Lessons' },
+    ]
+  : [];
+
+const tocHeadings = [
+  ...headings.filter((heading) => heading.depth >= 2 && heading.depth <= 3),
+  ...showcaseHeadings,
+];
 const articlePagefindAttributes = doc.data.hideFromSearch
   ? {
       'data-pagefind-meta': `category:${pagefindCategory}`,
@@ -60,6 +75,19 @@ const articlePagefindAttributes = doc.data.hideFromSearch
       'data-pagefind-body': true,
       'data-pagefind-meta': `category:${pagefindCategory}`,
     };
+const getBadgeTone = (badge: string) => {
+  const label = badge.toLowerCase();
+  if (label.includes('review') || label.includes('verified')) return 'success';
+  if (label.includes('ai')) return 'info';
+  return 'neutral';
+};
+
+// Standardised showcase badges, gated on per-article boolean flags (default
+// false, so nothing shows until the author verifies). AI-Assisted carries a
+// robot icon; Reviewed carries a tick.
+const showcaseBadges: Array<{ label: string; tone: 'info' | 'success'; icon: 'robot' | 'check' }> = [];
+if (doc.data.aiAssisted) showcaseBadges.push({ label: 'AI-Assisted', tone: 'info', icon: 'robot' });
+if (doc.data.reviewed) showcaseBadges.push({ label: 'Reviewed', tone: 'success', icon: 'check' });
 ---
 
 <Layout
@@ -121,12 +149,7 @@ const articlePagefindAttributes = doc.data.hideFromSearch
   }
 
   <div class="mx-auto flex max-w-[1280px] flex-col gap-10 px-4 py-10 lg:flex-row lg:px-8">
-    <Sidebar
-      sections={sidebarSections}
-      activeCategory={doc.data.category}
-      tocHeadings={tocHeadings}
-      suggestions={suggestedArticles}
-    />
+    <Sidebar sections={sidebarSections} activeCategory={doc.data.category} tocHeadings={tocHeadings} />
 
     <div class="min-w-0 max-w-3xl flex-1">
       <nav class="docs-breadcrumbs mb-6 flex flex-wrap items-center gap-2 text-sm text-[var(--color-text-muted)]">
@@ -146,12 +169,43 @@ const articlePagefindAttributes = doc.data.hideFromSearch
         class="site-panel docs-article rounded-[15px] border border-[var(--color-border)] bg-[var(--color-surface)] p-6 sm:p-8 lg:p-10"
         {...articlePagefindAttributes}
       >
-        <h1 class="text-4xl font-semibold tracking-tight text-[var(--color-text-strong)] lg:text-5xl">
-          {doc.data.title}
+        <h1 class="flex items-start justify-between gap-4 text-4xl font-semibold tracking-tight text-[var(--color-text-strong)] lg:text-5xl">
+          <span class="min-w-0 flex-1">{doc.data.title}</span>
+          {
+            (showcaseBadges.length > 0 || doc.data.badges.length > 0) && (
+              <span
+                class="docs-article-badges ml-auto flex shrink-0 flex-col items-end gap-1.5 pt-1"
+                aria-label="Article badges"
+              >
+                {showcaseBadges.map((badge) => (
+                  <Badge tone={badge.tone} icon={badge.icon}>
+                    <span class="text-xs leading-none">{badge.label}</span>
+                  </Badge>
+                ))}
+                {doc.data.badges.map((badge) => (
+                  <Badge tone={getBadgeTone(badge)}>
+                    <span class="text-xs leading-none">{badge}</span>
+                  </Badge>
+                ))}
+              </span>
+            )
+          }
         </h1>
         {
           doc.data.description && (
             <p class="mt-5 max-w-2xl text-base leading-7 text-[var(--color-text)]">{doc.data.description}</p>
+          )
+        }
+
+        {
+          doc.data.tags.length > 0 && (
+            <ul class="mt-5 flex flex-wrap gap-2" aria-label="Article tags">
+              {doc.data.tags.map((tag) => (
+                <li>
+                  <Badge>{tag}</Badge>
+                </li>
+              ))}
+            </ul>
           )
         }
 
@@ -197,11 +251,25 @@ const articlePagefindAttributes = doc.data.hideFromSearch
 
         <div class="docs-divider mt-8 border-t"></div>
 
+        {
+          isStructuredShowcase && doc.data.role && doc.data.dates && doc.data.roleSummary && (
+            <ShowcaseMeta role={doc.data.role} dates={doc.data.dates} roleSummary={doc.data.roleSummary} />
+          )
+        }
+        {isStructuredShowcase && doc.data.metrics && <AtAGlance metrics={doc.data.metrics} />}
+
         <div
           class="prose mt-8 max-w-none prose-headings:font-semibold prose-a:text-[var(--color-accent)] prose-a:no-underline hover:prose-a:text-[var(--color-accent-hover)] prose-code:rounded prose-code:bg-[var(--color-inline-code-bg)] prose-code:px-1 prose-code:py-0.5 prose-code:text-[var(--color-inline-code-fg)] prose-pre:bg-transparent prose-pre:p-0"
         >
           <Content components={mdxComponents} />
         </div>
+
+        {isStructuredShowcase && doc.data.decisions && <DecisionList decisions={doc.data.decisions} />}
+        {
+          isStructuredShowcase && doc.data.outcome && doc.data.lessons && (
+            <OutcomeBlock outcome={doc.data.outcome} lessons={doc.data.lessons} />
+          )
+        }
 
         {
           doc.data.relatedLinks.length > 0 && (

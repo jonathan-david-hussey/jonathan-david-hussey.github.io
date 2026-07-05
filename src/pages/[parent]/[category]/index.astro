@@ -1,6 +1,5 @@
 ---
 import { getCollection } from 'astro:content';
-import PaginatedArticleList from '../../../components/PaginatedArticleList.astro';
 import SearchPreviews from '../../../components/SearchPreviews.astro';
 import Sidebar from '../../../components/Sidebar.astro';
 import {
@@ -12,7 +11,6 @@ import {
   getPublicDocs,
   getSearchPreviewLookup,
   getSidebarSections,
-  getSuggestedSearchArticles,
 } from '../../../data/docs';
 import Layout from '../../../layouts/Layout.astro';
 
@@ -30,12 +28,8 @@ const parent = parentSlug ? docsParentMap[parentSlug as keyof typeof docsParentM
 const subcategory = category ? docsCategoryDataMap[category as keyof typeof docsCategoryDataMap] : undefined;
 const allDocs = await getCollection('docs');
 const publicDocs = getPublicDocs(allDocs);
-const sections = parent ? getSidebarSections(parent.slug) : [];
 const categoryDocs = category ? getOrderedDocsForCategory(publicDocs, category) : [];
-const suggestedArticles = getSuggestedSearchArticles(publicDocs, {
-  limit: 3,
-  categories: category ? [category] : undefined,
-});
+const sections = parent ? getSidebarSections(parent.slug) : [];
 const searchPreviews = getSearchPreviewLookup(publicDocs);
 ---
 
@@ -46,7 +40,7 @@ const searchPreviews = getSearchPreviewLookup(publicDocs);
   <SearchPreviews previews={searchPreviews} />
 
   <div class="mx-auto flex max-w-[1280px] flex-col gap-10 px-4 py-10 lg:flex-row lg:px-8">
-    {parent && <Sidebar sections={sections} activeCategory={subcategory?.slug} suggestions={suggestedArticles} />}
+    {parent && <Sidebar sections={sections} activeCategory={subcategory?.slug} />}
 
     <div class="min-w-0 flex-1">
       <section
@@ -80,13 +74,21 @@ const searchPreviews = getSearchPreviewLookup(publicDocs);
             </div>
           ) : (
             <div class="docs-divider mt-10 border-t border-[var(--color-border)] pt-6">
-              <PaginatedArticleList
-                pageSize={8}
-                items={categoryDocs.map((doc) => ({
-                  title: doc.data.title,
-                  href: getArticleHref(doc.data.category, getCleanDocSlug(doc.id)),
-                }))}
-              />
+              <ol class="space-y-1">
+                {categoryDocs.map((doc, index) => (
+                  <li>
+                    <a
+                      href={getArticleHref(doc.data.category, getCleanDocSlug(doc.id))}
+                      class="docs-article-list-link grid grid-cols-[2rem_minmax(0,1fr)] items-center gap-x-3 py-2 text-sm text-[var(--color-link-subtle)] transition hover:text-[var(--color-accent)]"
+                    >
+                      <span class="self-center text-right text-xs font-semibold leading-none text-[var(--color-text-muted)]">
+                        {String(index + 1).padStart(2, '0')}
+                      </span>
+                      <span class="leading-6">{doc.data.title}</span>
+                    </a>
+                  </li>
+                ))}
+              </ol>
             </div>
           )
         }

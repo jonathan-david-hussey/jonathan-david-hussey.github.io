@@ -11,7 +11,6 @@ import {
   getPublicDocs,
   getSearchPreviewLookup,
   getSidebarSections,
-  getSuggestedSearchArticles,
 } from '../../data/docs';
 import Layout from '../../layouts/Layout.astro';
 
@@ -26,10 +25,6 @@ const allDocs = await getCollection('docs');
 const publicDocs = getPublicDocs(allDocs);
 const parentData = category ? docsParentMap[category as keyof typeof docsParentMap] : undefined;
 const sections = parentData ? getSidebarSections(parentData.slug) : [];
-const suggestedArticles = getSuggestedSearchArticles(publicDocs, {
-  limit: 3,
-  categories: sections.map((section) => section.slug),
-});
 const searchPreviews = getSearchPreviewLookup(publicDocs);
 ---
 
@@ -37,7 +32,7 @@ const searchPreviews = getSearchPreviewLookup(publicDocs);
   <SearchPreviews previews={searchPreviews} />
 
   <div class="mx-auto flex max-w-[1280px] flex-col gap-10 px-4 py-10 lg:flex-row lg:px-8">
-    {parentData && <Sidebar sections={sections} suggestions={suggestedArticles} />}
+    {parentData && <Sidebar sections={sections} />}
 
     <div class="min-w-0 flex-1">
       <section
