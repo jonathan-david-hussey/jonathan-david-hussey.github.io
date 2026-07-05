@@ -29,13 +29,14 @@
   "scripts": {
     "dev": "astro dev --host 0.0.0.0 --port 3000",
     "start": "astro dev --host 0.0.0.0 --port 3000",
-    "build": "astro build && pagefind --site dist",
+    "build": "node scripts/validate-showcase.mjs && astro build && pagefind --site dist",
     "preview": "astro preview --host 0.0.0.0 --port 3000",
-    "check": "astro check",
+    "check": "node scripts/validate-showcase.mjs && astro check",
     "lint": "astro check",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "clean": "node -e \"import('node:fs').then((fs) => ['dist', '.astro'].forEach((dir) => fs.rmSync(dir, { recursive: true, force: true })))\""
+    "clean": "node -e \"import('node:fs').then((fs) => ['dist', '.astro'].forEach((dir) => fs.rmSync(dir, { recursive: true, force: true })))\"",
+    "validate:content": "node scripts/validate-showcase.mjs"
   },
   "keywords": [
     "astro",
@@ -54,6 +55,7 @@
     "@tailwindcss/typography": "^0.5.16",
     "@tailwindcss/vite": "^4.1.14",
     "astro": "^6.4.3",
+    "mermaid": "^11.16.0",
     "tailwindcss": "^4.1.14"
   },
   "devDependencies": {
