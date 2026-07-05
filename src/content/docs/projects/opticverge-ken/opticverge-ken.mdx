@@ -1,38 +1,233 @@
 ---
 title: 'Ken'
-description: 'A Flutter study app and Python ingestion pipeline that turns PDFs into verified multiple-choice question banks with extracted terms, source citations, page references, and local practice analytics.'
+description: 'A PDF-agnostic MCQ generation system and Flutter study app that turns source books into verified question banks with terms, citations, page references, and local practice analytics.'
 category: 'projects'
-tags: ['Flutter', 'Dart', 'Python', 'PyMuPDF', 'Riverpod', 'Drift', 'SQLite', 'Sentence Transformers', 'spaCy', 'LLM']
+tags:
+  [
+    'Python',
+    'AI',
+    'Machine Learning',
+    'NLP',
+    'Unsupervised Learning',
+    'Flutter',
+    'Dart',
+    'LLM',
+    'OpenRouter',
+    'OpenAI-compatible APIs',
+    'DeepSeek',
+    'HTTP APIs',
+    'JSON',
+    'PyMuPDF',
+    'OCR',
+    'spaCy',
+    'scikit-learn',
+    'TF-IDF',
+    'Sentence Transformers',
+    'Embeddings',
+    'Semantic Similarity',
+    'Clustering',
+    'KeyBERT',
+    'YAKE',
+    'NLTK',
+    'wordfreq',
+    'pyenchant',
+    'PyTorch',
+    'Drift',
+    'SQLite',
+    'Riverpod',
+    'shared_preferences',
+    'UUID',
+    'ThreadPoolExecutor',
+    'Multiprocessing',
+    'Disk Caching',
+    'cProfile',
+    'AI-Assisted',
+  ]
+aiAssisted: true
+reviewed: false
 order: 2
+role: 'Author'
+dates: '2026 - present'
+roleSummary: 'I designed and built the PDF-to-bank pipeline, the generated-question verification loop, and the Flutter practice app that consumes the generated banks.'
+metrics:
+  - '15.5K generated questions'
+  - '129 chapters processed'
+  - '4.7x faster parsing'
+decisions:
+  - title: 'PDF-agnostic bank generation'
+    detail: 'The pipeline treats each source as a book-to-bank build: detect structure, extract terms, generate grounded MCQs, verify coverage, and publish a bank without hard-coding the subject.'
+    tradeoff: 'Publisher layout differences still need detector logic and reviewable source profiles.'
+  - title: 'Coverage-targeted question generation'
+    detail: 'The generator enumerates atomic knowledge points and loops against uncovered points instead of asking for a fixed number of questions.'
+    tradeoff: 'Generation takes more orchestration, but question volume follows the source rather than an arbitrary quota.'
+  - title: 'Per-book isolation and resumability'
+    detail: 'Each book writes to its own data tree, UUID, cache prefix, generated-question files, source profile, rendered pages, and app bank.'
+    tradeoff: 'There are more artifacts to manage, but long LLM-backed runs can resume without cross-book contamination.'
+  - title: 'Bundled banks before services'
+    detail: 'The app consumes generated JSON banks and rendered page assets as bundled content while the backend/API path remains a later architecture step.'
+    tradeoff: 'Fresh ingestion requires rebuilding assets, but the app stays offline-friendly and simple to validate.'
+outcome:
+  - 'Ken now works as a fully PDF-agnostic MCQ generator system: it can ingest different books, detect structure, extract terms, generate grounded questions, and publish app-ready banks without hard-coding the subject.'
+  - 'The current library contains 9 processed books, 129 chapters, and 15,457 generated questions with chapter metadata, tags, explanations, source citations, and page references.'
+  - 'The Flutter app turns those verified banks into whole-book, chapter, timed, weakest-first, and focus-mode practice with local learner analytics.'
+lessons: 'There is no general method today that proves generated text is grounded in truth. Ken treats grounding as an engineering control: require source quotes, locate them in extracted text, reject weak generations, measure coverage, and preserve the evidence all the way into the app.'
 ---
 
-*Author · 2026 -*
+import libraryScreenshot from './ken-library.webp';
+import sessionsScreenshot from './ken-sessions.webp';
+import bookDetailScreenshot from './ken-book-detail.webp';
+import quizSessionScreenshot from './ken-quiz-session.webp';
 
-**At a glance**
+## Context
 
-- 9 bundled books with 15,457 generated questions across 129 chapters
-- 6-stage per-chapter pipeline from term candidates to assembled app bank
-- 90% default knowledge-point coverage target for generated question batches
+Ken is a book-to-bank system. It takes a source PDF, derives a reviewable source profile, generates a verified multiple-choice question bank, and delivers that bank through a cross-platform Flutter practice app.
 
-Ken is a knowledge-system experiment that turns a source PDF into a studyable multiple-choice question bank, then drills that bank in a cross-platform Flutter app. The current phase uses generated JSON banks and bundled assets; the architecture notes keep the path open for an API, ingestion worker, PostgreSQL with pgvector, and Elasticsearch later.
+The project started from a practical study problem: a learner does not need another folder of static PDFs. They need reliable practice material that can explain where an answer came from, return to weak areas, and keep enough local history to make repeated revision useful.
 
-The app is more than a static quiz viewer. It starts from a book library, loads each selected bank, and supports whole-book practice, per-chapter practice, timed sessions, weakest-first practice, and focus mode for retrying wrong answers until they are correct. Questions carry hints, explanations, tags, difficulty, chapter metadata, source citations, and page references.
+The current phase uses bundled JSON banks and rendered page assets. That keeps the app simple, offline-friendly, and testable while leaving the path open for a later API, ingestion worker, PostgreSQL with pgvector, and search services.
 
-The practice loop tracks the details that make the app useful as a learning tool: selected answers, answer changes, hint usage, reference opens, elapsed time, pause/resume state, and whether each answer was correct. On the web, Drift uses IndexedDB-backed SQLite storage for sessions and events, while the app also keeps local history for weakest-question selection and resumable study state.
+## The Problem
 
-The PDF pipeline is designed to be subject-agnostic. A single `build_book.py --pdf ...` flow derives the book id, bootstraps metadata, builds a source profile, generates questions for detected chapters, renders page and cover assets, publishes a per-book bank, and updates the Flutter app's library index. Each book writes to its own data tree and cache prefix so generated content does not cross-contaminate between sources.
+Generic quiz generation can produce volume without trust. A model can miss important concepts, repeat the same idea, drift away from the source, or produce an answer that sounds plausible but cannot be traced back to the PDF.
 
-Per chapter, the generation process is staged and resumable:
+The central problem was therefore not "generate questions." It was to design a repeatable process where questions are created from detected source structure, checked against explicit knowledge points, and rejected when their evidence cannot be found in the source text.
 
-1. extract candidate terms without an API call
-2. cluster and deduplicate candidate terms with embeddings
-3. use an LLM judge to produce the chapter tag vocabulary
-4. generate MCQs against uncovered knowledge points
-5. run a coverage check against the generated questions
-6. assemble the app-ready bank with chapter titles, citations, and tags
+The app had a related problem. If the generated bank was useful, the learner still needed more than a static quiz viewer. The practice surface had to support book, chapter, timed, weakest-first, and focus-mode workflows, while recording enough local history to make weak areas visible.
 
-The MCQ generator does not ask for a fixed number of questions. It enumerates atomic knowledge points on each page, targets the uncovered points, and loops until embedding-similarity coverage reaches the configured target. Each generated question must include a verbatim source quote, and the verifier checks for citation grounding, meta-framing, non-English text, answer-length outliers, duplicate stems, and other failure modes before questions are accepted.
+## Constraints
 
-The term extraction path combines library-backed signals rather than hand-written domain lists. It uses spaCy noun chunks and POS-aware tokens, scikit-learn TF-IDF, YAKE keywords, KeyBERT semantic relevance, wordfreq common-language scoring, and NLTK fallback tokenization. Those terms become both the vocabulary reviewed by the pipeline and the tags attached to questions in the assembled bank.
+- **Publisher-specific layouts.** Different publishers use different table-of-contents, chapter, section, appendix, and page-number conventions, so the pipeline needs detector strategies rather than one universal layout rule.
+- **OCR and source quality.** PDFs vary in text extraction quality; detected structure has to be reviewable instead of silently trusted.
+- **Source grounding.** Each accepted question needs a citation, page reference, and source quote that can be located in the extracted text.
+- **Coverage over volume.** A fixed question count is not enough; generation needs to chase uncovered knowledge points until the configured coverage target is met.
+- **Resumable LLM work.** OpenRouter-backed stages are long-running and rate-limit-sensitive, so they need worker-based concurrency, disk caches, and safe resume points.
+- **Per-book isolation.** Terms, generated questions, source profiles, page images, UUIDs, and caches must stay separated by book.
+- **Bundled-bank delivery.** The current app phase consumes generated assets locally before the larger backend exists.
+
+## The Design
+
+<Mermaid
+  title="High-level architecture"
+  chart={`
+flowchart TD
+  PDF["Source PDFs"]
+  Profile["Python ingestion and source profile"]
+  Terms["Term extraction and clustering"]
+  LLM["OpenRouter / OpenAI-compatible LLM generation"]
+  Gates["Verification and coverage gates"]
+  Assets["Bank, profile, cover, and page assets"]
+  App["Flutter practice app"]
+  Local["Local analytics with Drift and SQLite"]
+
+  PDF --> Profile
+  Profile --> Terms
+  Terms --> LLM
+  LLM --> Gates
+  Gates --> Assets
+  Assets --> App
+  App --> Local
+  Gates -- "retry uncovered points" --> LLM
+` }
+/>
+
+Ken is split around one durable boundary: the generated bank. The Python pipeline owns PDF ingestion, source profiling, term extraction, LLM-backed generation, verification, coverage reporting, and asset publication. The Flutter app owns library navigation, practice modes, page-reference viewing, session state, and local learner analytics.
+
+The pipeline starts with `build_book.py`. A book build derives the book id, bootstraps metadata, creates a source profile, generates chapters, renders page and cover assets, publishes the per-book bank, and updates the app library index. Each book writes to its own data tree and cache prefix so long runs can resume without mixing artifacts from another source.
+
+The ingestion layer accepts that PDF structure is not uniform. It uses detector strategies for embedded outlines, publisher conventions, section-numbered tables of contents, OCR-heavy textbooks, and reviewed structure overrides. The result is a source profile that records detected chapters, sections, landmarks, warnings, page counts, and extraction status for review.
+
+Term extraction combines unsupervised, library-backed signals rather than hand-written domain lists. The pipeline uses spaCy noun chunks and POS-aware tokens, scikit-learn TF-IDF, YAKE keywords, KeyBERT semantic relevance, wordfreq common-language scoring, spelling normalization, and fallback tokenization. The clustering pass embeds candidate terms with Sentence Transformers, groups near-duplicates by cosine similarity, chooses a canonical display term, and keeps the merged variants as aliases. Those terms become the vocabulary reviewed by the pipeline and the tags attached to questions in the assembled bank.
+
+<Mermaid
+  title="Term extraction and clustering"
+  direction="TD"
+  chart={`
+flowchart TD
+  Pages["Chapter page text"]
+  Candidates["Candidate terms from spaCy, TF-IDF, YAKE, and KeyBERT"]
+  Normalize["Normalize, score, and gate candidates"]
+  Embed["Sentence Transformer embeddings"]
+  Cluster["Cosine-similarity clusters"]
+  Canonical["Canonical terms with aliases"]
+  Tags["Question and chapter tags"]
+  Bank["App-ready question bank"]
+
+  Pages --> Candidates
+  Candidates --> Normalize
+  Normalize --> Embed
+  Embed --> Cluster
+  Cluster --> Canonical
+  Canonical --> Tags
+  Tags --> Bank
+
+  subgraph ClusterA["Example cluster: service discovery"]
+    A1["service discovery"]
+    A2["service registry"]
+    A3["registry lookup"]
+  end
+
+  subgraph ClusterB["Example cluster: performance timing"]
+    B1["latency"]
+    B2["response time"]
+    B3["round-trip time"]
+  end
+
+  ClusterA --> Canonical
+  ClusterB --> Canonical
+` }
+/>
+
+Question generation is coverage-driven. The generator enumerates atomic knowledge points for each page, targets uncovered material, and loops until embedding-similarity coverage reaches the configured target. It does not ask for a fixed number of questions per chapter; the question count emerges from the source.
+
+Verification is part of the generation contract. Each generated question must include a verbatim quote, and the verifier checks that the quote can be found in the source text. It also rejects meta-framing, non-English output, answer-length outliers, duplicate stems, duplicate options, and other failure modes before questions reach the bank.
+
+The OpenRouter-backed stages were optimized for throughput and recovery after the initial implementation. Page-level generation, knowledge-point extraction, and term judgement use configurable worker pools. `run_chapter.py` can start question generation in the background while term judgement runs, and per-book LLM caches make reruns and resumed builds cheaper. The CPU-side performance work is measured separately: the spaCy candidate-parsing benchmark improved from 4.11 seconds to 0.87 seconds by batching parser work, a 4.7x improvement with identical output.
+
+The Flutter app consumes the bank and profile assets as a local library. Learners can practice a whole book, drill a chapter, run timed sessions, revisit the weakest questions, or use focus mode to retry mistakes. During a session the app records answer changes, hint usage, reference opens, elapsed time, pause/resume state, and correctness through Drift-backed local storage.
+
+## Flutter App
+
+The Flutter app is the learner-facing half of Ken: a local study library, a chapter-aware practice launcher, and the quiz surface that keeps the source evidence close to each question.
+
+<div class="showcase-phone-grid">
+  <figure>
+    <img
+      src={libraryScreenshot.src}
+      alt="Ken book library screen with imported books, search, filtering, and last-session resume controls."
+    />
+    <figcaption>
+      Library view with generated banks, search, domain filters, and a resumable last session.
+    </figcaption>
+  </figure>
+  <figure>
+    <img
+      src={sessionsScreenshot.src}
+      alt="Ken question sessions screen showing saved practice sessions ordered by newest first."
+    />
+    <figcaption>
+      Session history keeps active practice runs available across books and chapters.
+    </figcaption>
+  </figure>
+  <figure>
+    <img
+      src={bookDetailScreenshot.src}
+      alt="Ken book detail screen showing chapter list, question counts, page ranges, and practice modes."
+    />
+    <figcaption>
+      Book profiles expose chapter structure, page ranges, question counts, and study modes.
+    </figcaption>
+  </figure>
+  <figure>
+    <img
+      src={quizSessionScreenshot.src}
+      alt="Ken quiz session screen showing a generated multiple-choice question, options, progress, hints, and reference controls."
+    />
+    <figcaption>
+      Practice sessions keep progress, hint, reference, and source-page context on the same surface.
+    </figcaption>
+  </figure>
+</div>
+
+The result is not a quiz generator for one syllabus or one publisher. It is a PDF-agnostic MCQ generator system with a learner app attached: varied source material can be processed into grounded, app-ready banks while preserving the evidence needed to inspect and improve the output.
 
 The source is being prepared for public GitHub release. Once it is public, this project page can link directly to the repository from the project card.

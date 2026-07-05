@@ -4,25 +4,62 @@ description: 'A .NET knowledge orchestration platform and CLI for turning source
 category: 'projects'
 tags: ['C#', '.NET 10', 'ASP.NET Core', 'Aspire', 'EF Core', 'PostgreSQL', 'pgvector', 'OpenTelemetry', 'Python', 'pypdf']
 order: 3
+role: 'Author'
+dates: '2026 - present'
+roleSummary: 'I designed and built the CLI, Clean Architecture solution, local Aspire topology, ingestion worker, parser service, search API, and study-guide planner.'
+metrics:
+  - '10-project Clean Architecture solution with API, worker, parser, Aspire host, CLI, and tests'
+  - '12 public /v1 API endpoints for sources, ingestion, documents, search, study guides, and system profile'
+  - '6-stage durable ingestion pipeline from fingerprinting to PostgreSQL FTS and embedding rows'
+decisions:
+  - title: 'Grow the CLI into a platform'
+    detail: 'The original context-packaging CLI became the front door to a larger ingest, parse, index, search, and study-guide system instead of a separate throwaway tool.'
+    tradeoff: 'The project carries both command-line ergonomics and service architecture concerns.'
+  - title: 'Keep PostgreSQL canonical'
+    detail: 'PostgreSQL owns relational state, JSON metadata, full-text rows, and pgvector embeddings while OpenSearch and Qdrant stay modeled as opt-in future resources.'
+    tradeoff: 'The first version gives up specialized search infrastructure for a simpler local operating model.'
+  - title: 'Make ingestion durable and staged'
+    detail: 'The worker claims jobs from PostgreSQL and processes fingerprinting, metadata extraction, parsing, sectioning, enrichment, and persistence as idempotent stages.'
+    tradeoff: 'More state transitions to design, but failed work can resume at a clear boundary.'
+  - title: 'Put parsers behind a service boundary'
+    detail: 'A Python parser service and .NET fallback parser sit behind the same application abstraction, so richer parsing can be swapped without changing ingestion orchestration.'
+    tradeoff: 'A local HTTP hop appears in the developer topology.'
+outcome:
+  - 'Repository files and personal documents can be packaged, ingested, parsed, indexed, searched, and used as cited study-guide sources.'
+  - 'The local topology runs through Aspire with API, worker, PostgreSQL with pgvector, Apache Tika, and a Dockerfile-built Python parser service.'
+  - 'Architecture and maintainability are guarded by layer tests, persistence convention tests, and analyzer thresholds.'
+lessons: 'A personal knowledge system becomes easier to extend when the ingestion boundary is explicit. The useful pattern is to keep every stage idempotent, keep one canonical store until a specialist is truly needed, and make parser richness an implementation detail rather than an application contract.'
 ---
 
-*Author · 2026 -*
-
-**At a glance**
-
-- 10-project Clean Architecture solution with API, worker, parser, Aspire host, CLI, and tests
-- 12 public /v1 API endpoints for sources, ingestion, documents, search, study guides, and system profile
-- 6-stage durable ingestion pipeline from fingerprinting to PostgreSQL FTS and embedding rows
+## Context
 
 Opticverge.Dork started as a CLI for packaging repository context for LLMs, then grew into a local knowledge orchestration platform for personal document collections. The CLI scans a codebase, enriches files with Git metadata, filters by contributor and extension, strips noise such as C# single-line comments, converts HTML to Markdown, and writes a single Markdown context file for downstream model work.
 
-The platform layer takes the same core idea further: ingest, parse, index, search, and plan study guides over local knowledge sources. The solution follows Clean Architecture and Domain-Driven Design, with separate Domain, Application, Infrastructure, API, worker, parser, Aspire, service-defaults, CLI, and test projects.
+## The Problem
+
+The first CLI solved one narrow task: make a codebase easier to hand to an LLM. The broader need was to ingest mixed local knowledge sources, parse them into searchable records, preserve citations, and plan study guides from retrieved evidence without losing the simplicity that made the CLI useful.
+
+## Constraints
+
+- **Local-first operation.** The platform needed to run as a developer-local topology, not depend on managed services for the first usable version.
+- **Layer discipline.** Domain, application, infrastructure, API, worker, parser, CLI, and test concerns needed clear ownership.
+- **Parser variability.** Rich parsing should be available when Python dependencies are present, with a fallback path when they are not.
+- **Search evolution.** The design needed room for OpenSearch or Qdrant later while keeping PostgreSQL canonical now.
+- **Maintainability gates.** Architecture tests and analyzer thresholds needed to prevent the system from collapsing into one large ingestion script.
+
+## The Design
+
+The platform layer takes the original CLI idea further: ingest, parse, index, search, and plan study guides over local knowledge sources. The solution follows Clean Architecture and Domain-Driven Design, with separate Domain, Application, Infrastructure, API, worker, parser, Aspire, service-defaults, CLI, and test projects.
 
 The local Aspire topology runs an ASP.NET Core API, an ingestion worker, PostgreSQL with pgvector, Apache Tika, and a Dockerfile-built Python parser service. OpenSearch and Qdrant are modeled as opt-in future resources, while the v1 write path keeps PostgreSQL as the canonical relational, JSON metadata, full-text search, and vector store.
+
+### Durable Ingestion
 
 The ingestion worker claims durable jobs from PostgreSQL and processes them idempotently. Its six stages fingerprint the source, extract metadata, extract page text and artifacts, map pages into useful sections while suppressing low-value pages, generate tags and concepts, and persist canonical records, FTS rows, and embeddings.
 
 The Python parser service exposes `/health` and `/parse`, uses `pypdf` when available, emits parse manifests, page artifacts, page classifications, sections, and keyword-style tags, and falls back to text extraction when a richer parser is unavailable. A .NET fallback parser client sits behind the same application abstraction.
+
+### Search And Study Guides
 
 Search is exposed through `/v1/search` and currently ranks PostgreSQL-backed chunk candidates with lexical rank, tag overlap, and section quality. The study-guide planner uses search results to build objective-oriented sections with query variants, page-selection rules, and candidate cited sources, then persists the plan for later retrieval.
 

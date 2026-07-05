@@ -4,17 +4,50 @@ description: 'A NestJS backend for autonomous vehicle coordination: MQTT telemet
 category: 'projects'
 tags: ['TypeScript', 'NestJS', 'MongoDB', 'TypeORM', 'MQTT', 'EMQX', 'Docker', 'Swagger', 'Jest', 'Python']
 order: 4
+role: 'Author'
+dates: '2025'
+roleSummary: 'I designed and built the NestJS API, MQTT listener flow, mission assignment lifecycle, MongoDB persistence model, Docker Compose topology, simulator, and tests.'
+metrics:
+  - '4-service Docker Compose stack for EMQX, MongoDB, API, and telemetry simulation'
+  - '3 MQTT topic flows for telemetry, mission dispatch, and mission status updates'
+  - '13 spec and e2e test files covering services, listeners, and API behavior'
+decisions:
+  - title: 'HTTP commands, MQTT operations'
+    detail: 'The API owns vehicle, mission, and assignment commands while MQTT carries telemetry, mission dispatch, and mission status responses.'
+    tradeoff: 'Two integration surfaces to document and test.'
+  - title: 'Internal event service between broker and domain'
+    detail: 'MQTT handlers route messages into an event service so broker topic concerns do not leak into mission and telemetry processing.'
+    tradeoff: 'One more indirection layer, but cleaner domain tests.'
+  - title: 'Status history instead of one mutable flag'
+    detail: 'Mission assignment records keep timestamped status entries from PENDING through QUEUED, IN_PROGRESS, COMPLETED, or FAILED.'
+    tradeoff: 'More records per mission, but report generation can explain how the mission progressed.'
+  - title: 'Dockerized simulation as the default runtime'
+    detail: 'EMQX, MongoDB, the API, and a Python telemetry sender start together so the system can be exercised locally without external infrastructure.'
+    tradeoff: 'Local orchestration adds setup files, but it makes the integration story concrete.'
+outcome:
+  - 'Vehicles, missions, telemetry, assignments, mission status history, and mission reports are exposed through Swagger-documented APIs.'
+  - 'Telemetry and mission status messages flow through MQTT into validated MongoDB records.'
+  - 'The local stack can demonstrate the full path from simulated telemetry to mission assignment and status reporting.'
+lessons: 'Coordination systems are easier to reason about when command APIs, broker traffic, and domain events have crisp boundaries. The useful pattern is to keep every operational transition as a recorded event so reporting and debugging can reconstruct the mission lifecycle.'
 ---
 
-*Author · 2025*
-
-**At a glance**
-
-- 4-service Docker Compose stack for EMQX, MongoDB, API, and telemetry simulation
-- 3 MQTT topic flows for telemetry, mission dispatch, and mission status updates
-- 13 spec and e2e test files covering services, listeners, and API behavior
+## Context
 
 The Autonomous Vehicle Backend is a NestJS system for coordinating autonomous vehicles through a mix of HTTP APIs, MQTT messaging, and MongoDB persistence. It manages vehicle records, mission definitions, vehicle-mission assignments, telemetry intake, mission status history, and JSON mission reports.
+
+## The Problem
+
+Autonomous vehicle coordination needs both request/response management and asynchronous field communication. The backend had to expose a conventional API for operators while also accepting telemetry, dispatching missions, and recording mission status updates over MQTT.
+
+## Constraints
+
+- **Mixed communication styles.** HTTP fits operator commands and reports; MQTT fits vehicle telemetry and status traffic.
+- **Local demonstration.** The stack needed to run without a hosted broker or database.
+- **Validation before persistence.** Telemetry should only be stored for registered vehicles.
+- **Lifecycle visibility.** Mission assignment needed a history, not just a final state.
+- **Production hardening path.** The design had to leave room for broker ACLs, TLS, observability, retries, rate limiting, and stronger persistence/indexing choices.
+
+## The Design
 
 The runtime stack is designed to be started locally with Docker Compose. It brings up an EMQX MQTT broker, MongoDB, the NestJS API, and a Python telemetry sender that can publish simulated vehicle telemetry to the broker. Swagger is exposed at `/api`, and the HTTP API uses URI versioning, JWT guards, global validation, and a global exception filter.
 
@@ -26,9 +59,13 @@ The MQTT side listens to three topic patterns:
 
 Incoming MQTT messages are routed through NestJS message handlers into an internal event service, which decouples broker concerns from domain processing. Telemetry messages are validated against registered vehicles before they are written to MongoDB. Mission status responses are persisted as timestamped status records.
 
+### Mission Assignment Flow
+
 Mission assignment is an event-driven flow. The HTTP API creates the vehicle-mission record, stores an initial `PENDING` status, emits a create-mission event, then a listener records the `QUEUED` status and publishes the mission payload to the target vehicle topic at `vehicle/{vehicleId}/mission`. A separate listener handles status responses such as `IN_PROGRESS`, `COMPLETED`, and `FAILED`.
 
 Persistence is handled through TypeORM over MongoDB. The data model includes vehicles, missions, vehicle-mission assignments, mission status entries, and telemetry records. Telemetry entries include a generated telemetry id, vehicle id, timestamp, GeoJSON-style location, and optional status.
+
+### Reporting And Hardening
 
 The reporting path composes mission reports from multiple repositories. It joins vehicle-mission assignments with their vehicles, missions, and status histories so the API can return an operational view of what was assigned, to which vehicle, and how the mission progressed.
 

@@ -1,32 +1,59 @@
 ---
-title: 'YouTube ingestion without wasting quota'
+title: 'YouTube Ingestion Without Wasting Quota'
 description: 'A serverless ingestion platform for YouTube data: RSS feeds for fresh video content, YouTube Data API batches for account metadata, SQS fan-out, S3 handoff, DynamoDB recovery storage, and Elasticsearch indexing.'
 category: 'case-studies'
 tags: ['C#', '.NET 6', 'AWS Lambda', 'SQS', 'S3', 'Kinesis', 'DynamoDB', 'Elasticsearch', 'SQL Server', 'Polly']
 order: 3
+role: 'Senior Software Engineer'
+dates: '2019 – 2024'
+roleSummary: 'I designed and built the ingestion platform end to end — architecture and cost analysis through infrastructure as code, implementation, testing and monitoring.'
+metrics:
+  - '70k+ channels refreshed through 50-channel Data API batches'
+  - 'Each channel eligible for feed refresh every 48 hours'
+  - 'Serverless fan-out across SQS, S3, Kinesis, DynamoDB and Elasticsearch'
+decisions:
+  - title: 'Two pipelines instead of one'
+    detail: 'The cheap RSS path runs continuously while the quotaed Data API path batches intelligently — one generic pipeline would have done both jobs badly.'
+    tradeoff: 'Two paths cost more code to maintain.'
+  - title: '50-channel API batches'
+    detail: 'Matching the batch size to the channels/list API shape turned 70k+ channels into roughly 1,450 calls per day against a 10,000-request quota — quota went from constraint to capacity margin.'
+  - title: 'An API Gateway hop in front of the feed fetch'
+    detail: 'A throttle knob that works without code changes when the provider pushes back.'
+    tradeoff: 'An extra hop and its cost.'
+  - title: 'Hash before work'
+    detail: 'Comparing the feed hash before parsing means unchanged feeds cost almost nothing — most of a 48-hour refresh cycle is no-ops, and the design embraces that.'
+  - title: 'Three stores with narrow jobs'
+    detail: 'S3 is the feed-level audit and retry boundary, DynamoDB the post-level recovery store (compressed source, ten-year TTL), Elasticsearch the search surface.'
+    tradeoff: 'Three systems to operate instead of one database pretending to be all three.'
+outcome:
+  - '70k+ channels stay current within their freshness windows using a fraction of the daily API quota.'
+  - 'Every stage is independently recoverable: a feed replays through the S3 Processing prefix, a channel re-targets through the queue, a search document rebuilds from the DynamoDB source record.'
+  - 'Dead-letter queues with CloudWatch alarms catch what falls through; correlation IDs in SQS attributes and S3 metadata let a single channel refresh be followed across the system.'
+lessons: 'The interesting work was not "call YouTube and save the result" — it was separating two data sources with different economics, then building the pipeline so the cheap path could run continuously, the quotaed path could batch intelligently, and failures stayed local. The pattern I would reuse: make the unit of work small, give every handoff a durable boundary, preserve enough source data to recover, and spend API quota only where it buys fresher product data.'
 ---
 
-*Senior Software Engineer · 2019 - 2024*
-
-**At a glance**
-
-- 70k+ channels refreshed through 50-channel Data API batches
-- Each channel eligible for feed refresh every 48 hours
-- Serverless fan-out across SQS, S3, Kinesis, DynamoDB and Elasticsearch
-
-## The situation
+## Context
 
 A social-media intelligence platform needed YouTube data to behave like a first-class source: recent videos searchable alongside other content, channel profile details kept current, and stale or deleted accounts removed from the ingestion loop.
 
-The awkward part was that YouTube was really two different ingestion problems. RSS feeds were the right source for recent videos: cheap, simple, and available per channel. The YouTube Data API was the right source for account metadata: channel title, description, thumbnails, reach and media counts. Treating those as one pipeline would either waste quota or under-refresh the data that mattered.
+## The Problem
 
-So the system split them deliberately: one continuous RSS pipeline for video content, and one quota-aware Data API pipeline for channel metadata.
+YouTube was really two different ingestion problems wearing one name. RSS feeds were the right source for recent videos: cheap, simple, and available per channel. The YouTube Data API was the right source for account metadata: channel title, description, thumbnails, reach and media counts. Treating those as one pipeline would either waste quota or under-refresh the data that mattered.
 
-## The feed pipeline
+## Constraints
+
+- **A 10,000-request daily API quota** against 70k+ channels needing regular metadata refreshes.
+- **Freshness targets** — every channel eligible for a feed refresh within a 48-hour window.
+- **Provider unpredictability.** YouTube can throttle, channels get deleted, feeds go quiet — the system had to keep working around all three.
+- **Recoverability.** With thousands of small jobs moving at once, any single channel, message or provider call had to be replayable without a full rerun.
+
+## The Design
+
+Two pipelines, deliberately split: a continuous RSS pipeline for video content, and a quota-aware Data API pipeline for channel metadata.
+
+### The Feed Pipeline
 
 The RSS side starts with a scheduler that selects channels due for refresh. Each channel is eligible after a 48-hour window, and the picker Lambda runs every minute, loading a configurable batch of channel IDs from SQL Server and pushing them to SQS.
-
-From there the work is broken into small, recoverable stages:
 
 ```text
 scheduled channel picker
@@ -46,32 +73,16 @@ The API Gateway hop is not decorative. It gives the team a throttle point in fro
 
 The fetch stage hashes the feed before doing more work. If the feed has not changed, it exits early. If it has changed, it writes the XML to S3 under a `Processing` prefix and includes the correlation ID and serialized handoff DTO in object metadata. That handoff is small but important: the parse Lambda can recover all context from the object event and the object itself, without relying on process memory or a side channel.
 
-## Turning feeds into product data
+### Turning Feeds Into Product Data
 
 Parsing fans the XML in two directions. Header changes go to a Kinesis stream so account names and descriptions can be updated separately. Video entries go to SQS in batches, where another Lambda converts each entry into a DynamoDB record.
 
 DynamoDB is doing more than acting as a staging table. It stores compressed source XML, carries query keys for video ID and month-based recovery, applies a ten-year TTL, and emits a stream. The stream processor turns those records into Elasticsearch documents: title, description, URL, thumbnail, views, likes, extracted URLs, extracted hashtags, and normalized index text.
 
-That gives the system a useful operational shape. S3 is the feed-level audit and retry boundary; DynamoDB is the post-level recovery store; Elasticsearch is the search surface. Each has a narrow job instead of one database pretending to be all three.
+Feed state is explicit too. Successfully parsed XML is moved from `Processing` to `Success`; failed XML goes to `Failure`. Success objects expire quickly, failure objects are retained longer for debugging — the kind of detail that makes an ingestion system operable when thousands of tiny jobs are moving at once.
 
-Feed state is explicit too. Successfully parsed XML is moved from `Processing` to `Success`; failed XML goes to `Failure`. Success objects expire quickly, failure objects are retained longer for debugging. That sounds mundane, but it is the kind of detail that makes an ingestion system operable when thousands of tiny jobs are moving at once.
-
-## The Data API pipeline
+### The Data API Pipeline
 
 The account-metadata path runs on a different cadence. A daily scheduler reads active YouTube accounts from SQL Server, excluding channels already known to be inactive, and queues account records for refresh.
 
-The next Lambda consumes up to 50 channel IDs at a time because that is the natural shape of the YouTube `channels/list` API. At the scale in the source system, 70k+ channels translated to roughly 1,450 API calls per day against a 10,000-request daily quota. That batching choice turned quota from a production constraint into a capacity margin.
-
-Transient failures are retried with exponential backoff and jitter. API responses that represent permanent business conditions are handled differently: deleted or missing channels can be marked inactive, and downstream account updates only proceed when channel data exists. The final stage updates the platform account record with the current title, description, image, subscriber reach and media counts, then schedules the affected profile cache to refresh.
-
-## Designed for failure
-
-The architecture assumes individual channels, messages and provider calls will fail. Each queue has a dead-letter queue. Dead-letter queues have CloudWatch alarms. Lambdas have deliberate batch sizes and concurrency limits. Correlation IDs are carried through SQS message attributes and S3 metadata so a single channel refresh can be followed across the system.
-
-The code also keeps replay paths simple. A feed can be manually reintroduced through the S3 `Processing` prefix. A channel can be targeted directly through the queue. DynamoDB retains the compressed source entry long enough to rebuild a search document if the indexing side needs attention. Monthly Elasticsearch indexes are trimmed by a scheduled housekeeping Lambda rather than left to grow without a policy.
-
-## What this demonstrates
-
-The interesting work here was not "call YouTube and save the result." It was separating two data sources with different economics, then building the pipeline so the cheap path could run continuously, the quotaed path could batch intelligently, and failures stayed local.
-
-That is the pattern I would reuse: make the unit of work small, give every handoff a durable boundary, preserve enough source data to recover, and spend API quota only where it buys fresher product data.
+The next Lambda consumes up to 50 channel IDs at a time because that is the natural shape of the YouTube `channels/list` API. Transient failures are retried with exponential backoff and jitter. API responses that represent permanent business conditions are handled differently: deleted or missing channels can be marked inactive, and downstream account updates only proceed when channel data exists. The final stage updates the platform account record with the current title, description, image, subscriber reach and media counts, then schedules the affected profile cache to refresh.
