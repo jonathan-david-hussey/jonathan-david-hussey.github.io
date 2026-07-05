@@ -2,7 +2,6 @@
 import type { SidebarSection } from '../data/docs';
 
 interface Props {
-  id?: string;
   sections: SidebarSection[];
   activeCategory?: string;
   tocHeadings?: {
@@ -10,71 +9,15 @@ interface Props {
     slug: string;
     text: string;
   }[];
-  suggestions?: {
-    title: string;
-    excerpt: string;
-    url: string;
-  }[];
 }
 
-const { id = 'sidebar-search', sections, activeCategory, tocHeadings = [], suggestions = [] } = Astro.props;
-const inputId = `${id}-input`;
-const resultsId = `${id}-results`;
-const hintId = `${id}-hint`;
-const statusId = `${id}-status`;
+const { sections, activeCategory, tocHeadings = [] } = Astro.props;
 ---
 
 <aside
-  class="docs-sidebar w-full shrink-0 lg:sticky lg:top-[calc(var(--docs-header-height)+1rem)] lg:max-h-[calc(100vh-var(--docs-header-height)-1.5rem)] lg:w-72 lg:overflow-y-auto lg:pr-1"
+  class="docs-sidebar hidden w-full shrink-0 lg:sticky lg:top-[calc(var(--docs-header-height)+1rem)] lg:block lg:max-h-[calc(100vh-var(--docs-header-height)-1.5rem)] lg:w-72 lg:overflow-y-auto lg:pr-1"
 >
-  <div
-    class="relative"
-    role="search"
-    data-docs-search
-    data-search-empty="No matching articles found."
-    data-search-error="Search is available after running npm run build and npm run preview."
-    data-search-suggestions={JSON.stringify(suggestions)}
-  >
-    <label class="sr-only" for={inputId}>Search this docs section</label>
-    <p id={hintId} class="sr-only">
-      Type to search articles in this section. Press slash or Control/Command plus K to focus the nearest search field.
-    </p>
-    <p id={statusId} class="sr-only" data-search-status aria-live="polite"></p>
-    <input
-      id={inputId}
-      type="search"
-      role="combobox"
-      placeholder="Search..."
-      data-search-input
-      class="sidebar-search-input w-full rounded-[15px] border border-[var(--color-border-strong)] bg-[var(--color-surface)] py-3 pl-4 pr-10 text-sm text-[var(--color-search-text)] outline-none placeholder:text-[var(--color-search-placeholder)] focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
-      aria-autocomplete="list"
-      aria-controls={resultsId}
-      aria-describedby={`${hintId} ${statusId}`}
-      aria-expanded="false"
-      aria-haspopup="listbox"
-    />
-    <div
-      class="sidebar-search-icon pointer-events-none absolute inset-y-0 right-0 flex items-center pr-3 text-[var(--color-search-placeholder)]"
-    >
-      <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
-        <path
-          stroke-linecap="round"
-          stroke-linejoin="round"
-          d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"></path>
-      </svg>
-    </div>
-    <div
-      id={resultsId}
-      data-search-results
-      class="sidebar-search-results absolute left-0 right-0 top-full z-50 mt-2 hidden max-h-80 overflow-y-auto rounded-[15px] border border-[var(--color-border)] bg-[var(--color-surface)] text-left"
-      role="listbox"
-      aria-label="Search results"
-      aria-hidden="true"
-    >
-    </div>
-  </div>
-
-  <div class="mt-8 hidden lg:block">
+  <div>
     <p class="docs-ui-label">Categories</p>
     <ul class="docs-sidebar-section-list mt-5">
       {
@@ -122,7 +65,3 @@ const statusId = `${id}-status`;
     }
   </div>
 </aside>
-
-<script>
-  import '../scripts/docs-search';
-</script>

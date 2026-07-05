@@ -1,8 +1,17 @@
 ---
+import { getCollection } from 'astro:content';
 import site from '../../site.config.mjs';
-import { topNavItems } from '../data/docs';
+import { getPublicDocs, getSuggestedSearchArticles, topNavItems } from '../data/docs';
 
 const pathname = Astro.url.pathname.replace(/\/+$/, '') || '/';
+const allDocs = await getCollection('docs');
+const publicDocs = getPublicDocs(allDocs);
+const headerSuggestions = getSuggestedSearchArticles(publicDocs, { limit: 4 });
+const headerSearchId = 'header-search';
+const headerSearchInputId = `${headerSearchId}-input`;
+const headerSearchResultsId = `${headerSearchId}-results`;
+const headerSearchHintId = `${headerSearchId}-hint`;
+const headerSearchStatusId = `${headerSearchId}-status`;
 
 function isActiveNavItem(href: string) {
   const normalizedHref = href.replace(/\/+$/, '') || '/';
@@ -13,14 +22,7 @@ function isActiveNavItem(href: string) {
 <header
   class="site-header sticky top-0 z-40 w-full shrink-0 border-b border-[var(--color-border)] bg-[color:color-mix(in_srgb,var(--color-surface)_95%,transparent)] backdrop-blur"
 >
-  <div class="mx-auto flex h-16 max-w-[1280px] items-center justify-between px-4 md:px-8">
-    <a
-      href="/"
-      class="text-2xl font-bold tracking-tight text-[var(--color-text-strong)] transition-opacity hover:opacity-80"
-    >
-      {site.name}
-    </a>
-
+  <div class="mx-auto flex h-16 max-w-[1280px] items-center justify-end gap-4 px-4 md:px-8 lg:justify-between">
     <nav class="hidden items-center gap-6 text-sm font-medium text-[var(--color-text)] lg:flex">
       {
         topNavItems.map((item) =>
@@ -44,7 +46,55 @@ function isActiveNavItem(href: string) {
       }
     </nav>
 
-    <div class="hidden items-center gap-3 lg:flex">
+    <div
+      class="header-search relative hidden w-[min(24vw,18rem)] shrink-0 lg:block"
+      role="search"
+      data-docs-search
+      data-search-empty="No matching articles found."
+      data-search-error="Search is available after running npm run build and npm run preview."
+      data-search-suggestions={JSON.stringify(headerSuggestions)}
+    >
+      <label class="sr-only" for={headerSearchInputId}>Search the site</label>
+      <p id={headerSearchHintId} class="sr-only">
+        Type to search articles. Press slash or Control/Command plus K to focus search.
+      </p>
+      <p id={headerSearchStatusId} class="sr-only" data-search-status aria-live="polite"></p>
+      <div
+        class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3 text-[var(--color-search-placeholder)]"
+      >
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="m21 21-4.35-4.35M10.5 18a7.5 7.5 0 1 1 0-15 7.5 7.5 0 0 1 0 15Z"></path>
+        </svg>
+      </div>
+      <input
+        id={headerSearchInputId}
+        type="search"
+        role="combobox"
+        placeholder="Search..."
+        data-search-input
+        class="header-search-input w-full rounded-[15px] border border-[var(--color-border-strong)] bg-[var(--color-surface)] py-2 pl-9 pr-3 text-sm text-[var(--color-search-text)] outline-none placeholder:text-[var(--color-search-placeholder)] focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+        autocomplete="off"
+        aria-autocomplete="list"
+        aria-controls={headerSearchResultsId}
+        aria-describedby={`${headerSearchHintId} ${headerSearchStatusId}`}
+        aria-expanded="false"
+        aria-haspopup="listbox"
+      />
+      <div
+        id={headerSearchResultsId}
+        data-search-results
+        class="header-search-results absolute left-0 right-0 top-full z-50 mt-2 hidden max-h-96 overflow-y-auto rounded-[15px] border border-[var(--color-border)] bg-[var(--color-surface)] text-left"
+        role="listbox"
+        aria-label="Search results"
+        aria-hidden="true"
+      >
+      </div>
+    </div>
+
+    <div class="hidden shrink-0 items-center gap-3 lg:flex">
       <button
         type="button"
         class="theme-toggle inline-flex h-10 w-10 items-center justify-center rounded-[15px] bg-transparent text-[var(--color-control-text)] transition hover:bg-transparent"
@@ -268,4 +318,8 @@ function isActiveNavItem(href: string) {
       syncThemeButtons();
     });
   });
+</script>
+
+<script>
+  import '../scripts/docs-search';
 </script>
