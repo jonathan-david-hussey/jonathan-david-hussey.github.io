@@ -1,0 +1,37 @@
+---
+interface Props {
+  outcomeId?: string;
+  lessonsId?: string;
+  outcome: string[];
+  lessons: string;
+}
+
+const {
+  outcomeId = 'outcome',
+  lessonsId = 'lessons',
+  outcome,
+  lessons,
+} = Astro.props;
+---
+
+<section class="not-prose my-8" aria-labelledby={outcomeId}>
+  <h2 id={outcomeId} class="mb-4 text-2xl font-bold tracking-tight text-[var(--color-text-strong)]">
+    Outcome
+  </h2>
+  <ul class="grid grid-cols-1 gap-3">
+    {
+      outcome.map((item) => (
+        <li class="rounded-[15px] border-l-4 border-[var(--color-brand)] bg-[var(--color-hover-surface)] px-4 py-3 text-sm leading-6 text-[var(--color-text-strong)]">
+          {item}
+        </li>
+      ))
+    }
+  </ul>
+</section>
+
+<section class="not-prose my-8" aria-labelledby={lessonsId}>
+  <h2 id={lessonsId} class="mb-3 text-2xl font-bold tracking-tight text-[var(--color-text-strong)]">
+    Lessons
+  </h2>
+  <p class="text-sm leading-7 text-[var(--color-text)]">{lessons}</p>
+</section>

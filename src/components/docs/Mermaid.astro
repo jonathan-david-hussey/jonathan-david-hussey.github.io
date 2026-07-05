@@ -1,0 +1,663 @@
+---
+interface Props {
+  chart: string;
+  title?: string;
+  direction?: 'TB' | 'TD' | 'BT' | 'LR' | 'RL';
+  layout?: 'dagre' | 'elk';
+}
+
+const { chart, title, direction, layout } = Astro.props;
+
+const applyDirection = (diagram: string) => {
+  if (!direction) return diagram;
+  return diagram.replace(/^(flowchart|graph)(?:\s+(TB|TD|BT|LR|RL))?/m, (_match, keyword) => `${keyword} ${direction}`);
+};
+
+const applyLayout = (diagram: string) => {
+  if (!layout || diagram.startsWith('---')) return diagram;
+  return `---
+config:
+  layout: ${layout}
+---
+${diagram}`;
+};
+
+const source = applyLayout(applyDirection(chart.trim()));
+const diagramLabel = title ? `${title} diagram` : 'Mermaid diagram';
+const expandLabel = title ? `Expand ${title}` : 'Expand diagram';
+---
+
+<figure class="not-prose mermaid-figure my-6" data-mermaid-figure>
+  <figcaption class="mermaid-header">
+    {title && <span class="mermaid-caption">{title}</span>}
+    <div class="mermaid-actions">
+      <div class="mermaid-zoom" data-mermaid-zoom>
+        <button type="button" class="mermaid-zoom-button" data-mermaid-zoom-out aria-label="Zoom out" title="Zoom out">
+          −
+        </button>
+        <button type="button" class="mermaid-zoom-button" data-mermaid-zoom-reset aria-label="Reset zoom" title="Reset zoom">
+          Reset
+        </button>
+        <button type="button" class="mermaid-zoom-button" data-mermaid-zoom-in aria-label="Zoom in" title="Zoom in">
+          +
+        </button>
+      </div>
+      <button
+        type="button"
+        class="mermaid-expand-button"
+        data-mermaid-expand
+        aria-expanded="false"
+        aria-label={expandLabel}
+        title={expandLabel}
+      >
+        <span data-mermaid-expand-label>Expand</span>
+      </button>
+    </div>
+  </figcaption>
+  <div class="mermaid-frame" data-mermaid-frame tabindex="0" aria-label={diagramLabel}>
+    <pre class="mermaid mermaid-diagram" data-mermaid-source={source}>{source}</pre>
+  </div>
+</figure>
+
+<script>
+  import mermaid from 'mermaid';
+
+  let iconPacksRegistered = false;
+  const registerMermaidIconPacks = () => {
+    if (iconPacksRegistered) return;
+    iconPacksRegistered = true;
+    try {
+      mermaid.registerIconPacks([
+        { name: 'igcse', loader: () => import('../../data/mermaid-icons').then((module) => module.iconPack) },
+      ]);
+    } catch (error) {
+      console.error('Mermaid icon pack registration failed', error);
+    }
+  };
+
+  const lightThemeVariables = {
+    fontFamily: 'Inter, Segoe UI, Arial, sans-serif',
+    background: '#ffffff',
+    primaryColor: '#eaf3ff',
+    primaryBorderColor: '#2563eb',
+    primaryTextColor: '#0f172a',
+    secondaryColor: '#ecfdf5',
+    secondaryBorderColor: '#059669',
+    secondaryTextColor: '#0f172a',
+    tertiaryColor: '#fff7ed',
+    tertiaryBorderColor: '#ea580c',
+    tertiaryTextColor: '#0f172a',
+    clusterBkg: '#f8fafc',
+    clusterBorder: '#cbd5e1',
+    lineColor: '#475569',
+    textColor: '#0f172a',
+    titleColor: '#0f172a',
+    actorBkg: '#eaf3ff',
+    actorBorder: '#2563eb',
+    actorTextColor: '#0f172a',
+    signalColor: '#475569',
+    signalTextColor: '#0f172a',
+    noteBkgColor: '#fff7ed',
+    noteTextColor: '#0f172a',
+    noteBorderColor: '#ea580c',
+    stateBkg: '#eaf3ff',
+    stateBorder: '#2563eb',
+    labelBoxBkgColor: '#ffffff',
+    labelBoxBorderColor: '#cbd5e1',
+    labelTextColor: '#0f172a',
+    nodeBorder: '#2563eb',
+    mainBkg: '#ffffff',
+    edgeLabelBackground: '#ffffff',
+  };
+
+  const darkThemeVariables = {
+    fontFamily: 'Inter, Segoe UI, Arial, sans-serif',
+    background: '#111827',
+    primaryColor: '#0f213f',
+    primaryBorderColor: '#60a5fa',
+    primaryTextColor: '#e5e7eb',
+    secondaryColor: '#0f2a21',
+    secondaryBorderColor: '#34d399',
+    secondaryTextColor: '#e5e7eb',
+    tertiaryColor: '#2b1d12',
+    tertiaryBorderColor: '#fb923c',
+    tertiaryTextColor: '#e5e7eb',
+    clusterBkg: '#0b1020',
+    clusterBorder: '#334155',
+    lineColor: '#cbd5e1',
+    textColor: '#e5e7eb',
+    titleColor: '#e5e7eb',
+    actorBkg: '#0f213f',
+    actorBorder: '#60a5fa',
+    actorTextColor: '#e5e7eb',
+    signalColor: '#cbd5e1',
+    signalTextColor: '#e5e7eb',
+    noteBkgColor: '#2b1d12',
+    noteTextColor: '#e5e7eb',
+    noteBorderColor: '#fb923c',
+    stateBkg: '#0f213f',
+    stateBorder: '#60a5fa',
+    labelBoxBkgColor: '#111827',
+    labelBoxBorderColor: '#334155',
+    labelTextColor: '#e5e7eb',
+    nodeBorder: '#60a5fa',
+    mainBkg: '#111827',
+    edgeLabelBackground: '#111827',
+  };
+
+  const isDarkMode = () => document.documentElement.classList.contains('dark');
+
+  const ZOOM_MIN = 0.5;
+  const ZOOM_MAX = 4;
+  const ZOOM_STEP = 0.2;
+
+  const diagramSvg = (figure: HTMLElement) => figure.querySelector<SVGSVGElement>('.mermaid-diagram svg');
+
+  const getZoom = (figure: HTMLElement) => Number(figure.dataset.zoom || '1') || 1;
+
+  const applyZoom = (figure: HTMLElement) => {
+    const svg = diagramSvg(figure);
+    if (!svg) return;
+    if (figure.dataset.expanded !== 'true') {
+      svg.style.width = '';
+      svg.style.maxWidth = '';
+      return;
+    }
+    const base = Number(figure.dataset.baseWidth || '0');
+    if (base > 0) {
+      // Mermaid sets an inline max-width (useMaxWidth) that caps the width; an
+      // inline style can only be overridden by another inline style.
+      svg.style.maxWidth = 'none';
+      svg.style.width = `${base * getZoom(figure)}px`;
+    }
+  };
+
+  const setZoom = (figure: HTMLElement, zoom: number) => {
+    figure.dataset.zoom = String(Math.min(ZOOM_MAX, Math.max(ZOOM_MIN, zoom)));
+    applyZoom(figure);
+  };
+
+  const fitZoom = (figure: HTMLElement) => {
+    const frame = figure.querySelector<HTMLElement>('[data-mermaid-frame]');
+    const base = Number(figure.dataset.baseWidth || '0');
+    if (!frame || base <= 0) return 1;
+    return Math.min(ZOOM_MAX, Math.max(1, (frame.clientWidth - 40) / base));
+  };
+
+  const captureBaseWidth = (figure: HTMLElement) => {
+    const svg = diagramSvg(figure);
+    if (!svg) return;
+    const viewBoxWidth = svg.viewBox?.baseVal?.width ?? 0;
+    const base = viewBoxWidth > 0 ? viewBoxWidth : svg.getBoundingClientRect().width;
+    if (base > 0) figure.dataset.baseWidth = String(base);
+  };
+
+  const enterZoom = (figure: HTMLElement) => {
+    captureBaseWidth(figure);
+    setZoom(figure, fitZoom(figure));
+  };
+
+  const exitZoom = (figure: HTMLElement) => {
+    figure.dataset.zoom = '1';
+    const svg = diagramSvg(figure);
+    if (svg) {
+      svg.style.width = '';
+      svg.style.maxWidth = '';
+    }
+  };
+
+  const reapplyExpandedZoom = () => {
+    for (const figure of document.querySelectorAll<HTMLElement>('[data-mermaid-figure][data-expanded="true"]')) {
+      captureBaseWidth(figure);
+      applyZoom(figure);
+    }
+  };
+
+  const initializeMermaid = () => {
+    registerMermaidIconPacks();
+    const dark = isDarkMode();
+
+    mermaid.initialize({
+      startOnLoad: false,
+      securityLevel: 'strict',
+      theme: 'base',
+      layout: 'dagre',
+      architecture: {
+        seed: 7,
+        nodeSeparation: 95,
+        idealEdgeLengthMultiplier: 2.2,
+      },
+      flowchart: {
+        curve: 'basis',
+        htmlLabels: true,
+        useMaxWidth: true,
+      },
+      sequence: {
+        mirrorActors: false,
+        showSequenceNumbers: true,
+      },
+      themeVariables: dark ? darkThemeVariables : lightThemeVariables,
+    });
+  };
+
+  const resetMermaidNodes = () => {
+    const nodes = Array.from(document.querySelectorAll<HTMLElement>('.mermaid-diagram[data-mermaid-source]'));
+
+    for (const node of nodes) {
+      node.textContent = node.dataset.mermaidSource?.trim() ?? '';
+      node.removeAttribute('data-processed');
+      node.removeAttribute('data-mermaid-rendered');
+      node.removeAttribute('data-mermaid-error');
+    }
+
+    return nodes;
+  };
+
+  const renderMermaid = async () => {
+    initializeMermaid();
+
+    const nodes = Array.from(
+      document.querySelectorAll<HTMLElement>('.mermaid-diagram[data-mermaid-source]:not([data-mermaid-rendered])'),
+    );
+
+    for (const node of nodes) {
+      node.textContent = node.dataset.mermaidSource?.trim() ?? '';
+      node.removeAttribute('data-processed');
+    }
+
+    try {
+      await mermaid.run({ nodes });
+      for (const node of nodes) node.dataset.mermaidRendered = 'true';
+      reapplyExpandedZoom();
+    } catch (error) {
+      console.error('Mermaid render failed', error);
+      for (const node of nodes) node.dataset.mermaidError = 'true';
+    }
+  };
+
+  const rerenderMermaid = async () => {
+    resetMermaidNodes();
+    await renderMermaid();
+  };
+
+  const updateModalLock = () => {
+    const hasExpandedDiagram = document.querySelector('[data-mermaid-figure][data-expanded="true"]') !== null;
+    document.body.classList.toggle('mermaid-modal-open', hasExpandedDiagram);
+  };
+
+  const setExpandedState = (figure: HTMLElement, expanded: boolean) => {
+    if (expanded) {
+      for (const openFigure of document.querySelectorAll<HTMLElement>('[data-mermaid-figure][data-expanded="true"]')) {
+        if (openFigure !== figure) setExpandedState(openFigure, false);
+      }
+    }
+
+    figure.dataset.expanded = expanded ? 'true' : 'false';
+
+    if (expanded) {
+      requestAnimationFrame(() => enterZoom(figure));
+    } else {
+      exitZoom(figure);
+    }
+
+    const button = figure.querySelector<HTMLButtonElement>('[data-mermaid-expand]');
+    if (button) {
+      button.dataset.expandLabel ||= button.getAttribute('aria-label') ?? 'Expand diagram';
+      button.dataset.closeLabel ||= button.dataset.expandLabel.replace(/^Expand/, 'Close');
+      button.setAttribute('aria-expanded', String(expanded));
+      button.setAttribute('aria-label', expanded ? button.dataset.closeLabel : button.dataset.expandLabel);
+      button.title = expanded ? button.dataset.closeLabel : button.dataset.expandLabel;
+
+      const label = button.querySelector<HTMLElement>('[data-mermaid-expand-label]');
+      if (label) label.textContent = expanded ? 'Close' : 'Expand';
+    }
+
+    updateModalLock();
+
+    if (expanded) {
+      figure.querySelector<HTMLElement>('[data-mermaid-frame]')?.focus({ preventScroll: true });
+    }
+  };
+
+  const initializeFramePan = (frame: HTMLElement) => {
+    if (frame.dataset.mermaidPanReady === 'true') return;
+    frame.dataset.mermaidPanReady = 'true';
+
+    let isDragging = false;
+    let pointerId = -1;
+    let startX = 0;
+    let startY = 0;
+    let startScrollLeft = 0;
+    let startScrollTop = 0;
+
+    const endDrag = () => {
+      isDragging = false;
+      pointerId = -1;
+      frame.classList.remove('is-dragging');
+    };
+
+    frame.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0) return;
+      if (frame.scrollWidth <= frame.clientWidth && frame.scrollHeight <= frame.clientHeight) return;
+
+      isDragging = true;
+      pointerId = event.pointerId;
+      startX = event.clientX;
+      startY = event.clientY;
+      startScrollLeft = frame.scrollLeft;
+      startScrollTop = frame.scrollTop;
+      frame.setPointerCapture(event.pointerId);
+    });
+
+    frame.addEventListener('pointermove', (event) => {
+      if (!isDragging || event.pointerId !== pointerId) return;
+
+      const deltaX = event.clientX - startX;
+      const deltaY = event.clientY - startY;
+      frame.scrollLeft = startScrollLeft - deltaX;
+      frame.scrollTop = startScrollTop - deltaY;
+
+      if (Math.abs(deltaX) + Math.abs(deltaY) > 3) {
+        frame.classList.add('is-dragging');
+        event.preventDefault();
+      }
+    });
+
+    frame.addEventListener('pointerup', endDrag);
+    frame.addEventListener('pointercancel', endDrag);
+    frame.addEventListener('lostpointercapture', endDrag);
+  };
+
+  const initializeFrameZoom = (figure: HTMLElement, frame: HTMLElement) => {
+    if (frame.dataset.mermaidZoomReady !== 'true') {
+      frame.dataset.mermaidZoomReady = 'true';
+      frame.addEventListener(
+        'wheel',
+        (event) => {
+          if (figure.dataset.expanded !== 'true' || (!event.ctrlKey && !event.metaKey)) return;
+          event.preventDefault();
+          setZoom(figure, getZoom(figure) * (event.deltaY < 0 ? 1 + ZOOM_STEP : 1 - ZOOM_STEP));
+        },
+        { passive: false },
+      );
+      frame.addEventListener('keydown', (event) => {
+        if (figure.dataset.expanded !== 'true') return;
+        if (event.key === '+' || event.key === '=') {
+          event.preventDefault();
+          setZoom(figure, getZoom(figure) + ZOOM_STEP);
+        } else if (event.key === '-' || event.key === '_') {
+          event.preventDefault();
+          setZoom(figure, getZoom(figure) - ZOOM_STEP);
+        } else if (event.key === '0') {
+          event.preventDefault();
+          setZoom(figure, fitZoom(figure));
+        }
+      });
+    }
+
+    const zoomControls = figure.querySelector<HTMLElement>('[data-mermaid-zoom]');
+    if (zoomControls && zoomControls.dataset.mermaidZoomReady !== 'true') {
+      zoomControls.dataset.mermaidZoomReady = 'true';
+      zoomControls
+        .querySelector('[data-mermaid-zoom-in]')
+        ?.addEventListener('click', () => setZoom(figure, getZoom(figure) + ZOOM_STEP));
+      zoomControls
+        .querySelector('[data-mermaid-zoom-out]')
+        ?.addEventListener('click', () => setZoom(figure, getZoom(figure) - ZOOM_STEP));
+      zoomControls
+        .querySelector('[data-mermaid-zoom-reset]')
+        ?.addEventListener('click', () => setZoom(figure, fitZoom(figure)));
+    }
+  };
+
+  const initializeMermaidInteractions = () => {
+    for (const figure of document.querySelectorAll<HTMLElement>('[data-mermaid-figure]')) {
+      const button = figure.querySelector<HTMLButtonElement>('[data-mermaid-expand]');
+      const frame = figure.querySelector<HTMLElement>('[data-mermaid-frame]');
+
+      if (frame) {
+        initializeFramePan(frame);
+        initializeFrameZoom(figure, frame);
+      }
+
+      if (button && button.dataset.mermaidExpandReady !== 'true') {
+        button.dataset.mermaidExpandReady = 'true';
+        button.addEventListener('click', () => {
+          setExpandedState(figure, figure.dataset.expanded !== 'true');
+        });
+      }
+    }
+
+    if (document.documentElement.dataset.mermaidGlobalInteractionsReady !== 'true') {
+      document.documentElement.dataset.mermaidGlobalInteractionsReady = 'true';
+      document.addEventListener('keydown', (event) => {
+        if (event.key !== 'Escape') return;
+        for (const figure of document.querySelectorAll<HTMLElement>('[data-mermaid-figure][data-expanded="true"]')) {
+          setExpandedState(figure, false);
+        }
+      });
+    }
+  };
+
+  const renderPageMermaid = async () => {
+    initializeMermaidInteractions();
+    await renderMermaid();
+  };
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', renderPageMermaid, { once: true });
+  } else {
+    renderPageMermaid();
+  }
+
+  document.addEventListener('astro:page-load', renderPageMermaid);
+
+  const themeObserver = new MutationObserver((mutations) => {
+    if (mutations.some((mutation) => mutation.attributeName === 'class')) {
+      rerenderMermaid();
+    }
+  });
+
+  themeObserver.observe(document.documentElement, { attributes: true });
+</script>
+
+<style>
+  .mermaid-figure {
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: 8px;
+    background: var(--color-surface);
+  }
+
+  .mermaid-header {
+    display: flex;
+    min-height: 3rem;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 1px solid var(--color-border);
+    gap: 0.75rem;
+    padding: 0.6rem 0.75rem 0.6rem 1rem;
+  }
+
+  .mermaid-caption {
+    min-width: 0;
+    color: var(--color-text-strong);
+    font-size: 0.875rem;
+    font-weight: 700;
+    line-height: 1.35;
+  }
+
+  .mermaid-actions {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.5rem;
+    margin-left: auto;
+  }
+
+  .mermaid-zoom {
+    display: none;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .mermaid-figure[data-expanded='true'] .mermaid-zoom {
+    display: inline-flex;
+  }
+
+  .mermaid-expand-button {
+    display: inline-flex;
+    min-width: 4.75rem;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-control-border);
+    border-radius: 6px;
+    background: var(--color-control-bg);
+    color: var(--color-control-text);
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+    padding: 0.5rem 0.65rem;
+    transition:
+      border-color 150ms ease,
+      background-color 150ms ease,
+      color 150ms ease;
+  }
+
+  .mermaid-zoom-button {
+    display: inline-flex;
+    min-width: 2rem;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid var(--color-control-border);
+    border-radius: 6px;
+    background: var(--color-control-bg);
+    color: var(--color-control-text);
+    cursor: pointer;
+    font-size: 0.75rem;
+    font-weight: 700;
+    line-height: 1;
+    padding: 0.5rem 0.55rem;
+    transition:
+      border-color 150ms ease,
+      background-color 150ms ease,
+      color 150ms ease;
+  }
+
+  .mermaid-expand-button:hover,
+  .mermaid-expand-button:focus-visible,
+  .mermaid-zoom-button:hover,
+  .mermaid-zoom-button:focus-visible {
+    border-color: var(--color-border-strong);
+    background: var(--color-control-bg-hover);
+    color: var(--color-control-text-hover);
+    outline: none;
+  }
+
+  .mermaid-frame {
+    overflow: hidden;
+    cursor: default;
+    padding: 1.25rem;
+    background: color-mix(in srgb, var(--color-surface-muted) 55%, transparent);
+    touch-action: pan-y;
+  }
+
+  .mermaid-frame:focus {
+    outline: 2px solid var(--color-accent);
+    outline-offset: -2px;
+  }
+
+  .mermaid-frame.is-dragging {
+    cursor: grabbing;
+    user-select: none;
+  }
+
+  .mermaid-frame.is-dragging * {
+    pointer-events: none;
+  }
+
+  .mermaid-diagram {
+    display: flex;
+    min-width: 0;
+    width: 100%;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+    background: transparent;
+    color: var(--color-text);
+    text-align: center;
+  }
+
+  .mermaid-diagram[data-mermaid-error='true'] {
+    white-space: pre-wrap;
+    color: var(--color-danger, #b91c1c);
+    text-align: left;
+  }
+
+  :global(.mermaid-diagram svg) {
+    width: 100%;
+    max-width: 100%;
+    min-width: 0;
+    height: auto;
+  }
+
+  :global(body.mermaid-modal-open) {
+    overflow: hidden;
+  }
+
+  .mermaid-figure[data-expanded='true'] {
+    position: fixed;
+    inset: 1rem;
+    z-index: 80;
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    box-shadow: 0 24px 80px rgb(15 23 42 / 0.28);
+  }
+
+  .mermaid-figure[data-expanded='true'] .mermaid-header {
+    flex: 0 0 auto;
+  }
+
+  .mermaid-figure[data-expanded='true'] .mermaid-frame {
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    cursor: grab;
+    padding: 1.5rem;
+    touch-action: none;
+  }
+
+  .mermaid-figure[data-expanded='true'] .mermaid-diagram {
+    width: max-content;
+    min-width: 100%;
+    align-items: flex-start;
+    justify-content: flex-start;
+  }
+
+  :global(.mermaid-figure[data-expanded='true'] .mermaid-diagram svg) {
+    max-width: none;
+    height: auto;
+  }
+
+  @media (max-width: 640px) {
+    .mermaid-header {
+      padding-inline: 0.75rem;
+    }
+
+    .mermaid-frame {
+      padding: 1rem;
+    }
+
+    .mermaid-figure[data-expanded='true'] {
+      inset: 0.5rem;
+    }
+
+    .mermaid-figure[data-expanded='true'] .mermaid-diagram {
+      min-width: 100%;
+    }
+  }
+</style>

@@ -1,11 +1,63 @@
 ---
 interface Props {
   tone?: 'neutral' | 'info' | 'success' | 'warning' | 'danger';
+  icon?: 'robot' | 'check';
 }
 
-const { tone = 'neutral' } = Astro.props;
+const { tone = 'neutral', icon } = Astro.props;
 ---
 
-<span class:list={['docs-badge not-prose', `docs-badge-${tone}`]}>
+<span class:list={['docs-badge not-prose', `docs-badge-${tone}`, icon && 'docs-badge-has-icon']}>
   <slot />
+  {
+    icon === 'robot' && (
+      <svg
+        class="docs-badge-icon"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.7"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M12 3.75V6" />
+        <circle cx="12" cy="3" r="0.75" fill="currentColor" stroke="none" />
+        <rect x="4.75" y="6.5" width="14.5" height="11" rx="2.5" />
+        <path d="M3 11v3M21 11v3M9 15h6" />
+        <circle cx="9" cy="11.5" r="1.15" fill="currentColor" stroke="none" />
+        <circle cx="15" cy="11.5" r="1.15" fill="currentColor" stroke="none" />
+      </svg>
+    )
+  }
+  {
+    icon === 'check' && (
+      <svg
+        class="docs-badge-icon"
+        viewBox="0 0 24 24"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="2.4"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+        aria-hidden="true"
+      >
+        <path d="M5 12.5l4.5 4.5L19 7" />
+      </svg>
+    )
+  }
 </span>
+
+<style>
+  .docs-badge-has-icon {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3em;
+  }
+
+  .docs-badge-icon {
+    width: 1.6em;
+    height: 1.6em;
+    flex: none;
+  }
+</style>

@@ -1,0 +1,37 @@
+---
+interface Decision {
+  title: string;
+  detail: string;
+  tradeoff?: string;
+}
+
+interface Props {
+  id?: string;
+  decisions: Decision[];
+}
+
+const { id = 'decisions-and-trade-offs', decisions } = Astro.props;
+---
+
+<section class="not-prose my-8" aria-labelledby={id}>
+  <h2 id={id} class="mb-4 text-2xl font-bold tracking-tight text-[var(--color-text-strong)]">
+    Decisions and Trade-Offs
+  </h2>
+  <div class="grid grid-cols-1 gap-4">
+    {
+      decisions.map((decision) => (
+        <article class="rounded-[15px] border border-[var(--color-border)] bg-[var(--color-surface)] p-5">
+          <h3 class="mb-1 text-base font-semibold text-[var(--color-text-strong)]">
+            {decision.title}
+          </h3>
+          <p class="text-sm leading-6 text-[var(--color-text)]">{decision.detail}</p>
+          {decision.tradeoff && (
+            <p class="mt-2 text-sm leading-6 text-[var(--color-text)] italic">
+              Trade-off: {decision.tradeoff}
+            </p>
+          )}
+        </article>
+      ))
+    }
+  </div>
+</section>

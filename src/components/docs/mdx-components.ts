@@ -8,6 +8,7 @@ import Checklist from './Checklist.astro';
 import ChecklistItem from './ChecklistItem.astro';
 import CodeTabs from './CodeTabs.astro';
 import FileTree from './FileTree.astro';
+import Mermaid from './Mermaid.astro';
 import QuoteBlock from './QuoteBlock.astro';
 import Step from './Step.astro';
 import Steps from './Steps.astro';
@@ -25,6 +26,7 @@ export const mdxComponents = {
   ChecklistItem,
   CodeTabs,
   FileTree,
+  Mermaid,
   QuoteBlock,
   Step,
   Steps,
