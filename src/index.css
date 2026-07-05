@@ -476,25 +476,25 @@ html.dark .astro-code[data-language='text'] span {
 }
 
 .search-input,
-.sidebar-search-input {
+.header-search-input {
   border-color: var(--color-border-strong);
   background: var(--color-surface);
   color: var(--color-search-text);
 }
 
 .search-input::placeholder,
-.sidebar-search-input::placeholder {
+.header-search-input::placeholder {
   color: var(--color-search-placeholder);
 }
 
 .search-input:focus,
-.sidebar-search-input:focus {
+.header-search-input:focus {
   border-color: var(--color-accent);
   box-shadow: 0 0 0 2px var(--color-accent-soft);
 }
 
 .search-results,
-.sidebar-search-results,
+.header-search-results,
 .site-panel,
 .site-card,
 .search-hero,
@@ -833,6 +833,12 @@ html.dark .astro-code[data-language='text'] span {
   border-color: var(--color-border);
 }
 
+.docs-article-badges {
+  position: relative;
+  right: -31px;
+  top: -35px;
+}
+
 .docs-article .prose :where(img) {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-ui);
@@ -841,6 +847,94 @@ html.dark .astro-code[data-language='text'] span {
 
 .docs-article :where(img[data-lightbox-image]) {
   cursor: zoom-in;
+}
+
+.showcase-screenshot-feature,
+.showcase-screenshot-grid figure {
+  margin: 0;
+}
+
+.showcase-screenshot-grid figure {
+  display: grid;
+  grid-template-rows: auto min-content;
+}
+
+.showcase-screenshot-feature {
+  margin-block: 1.5rem;
+}
+
+.showcase-screenshot-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+  margin-block: 1.5rem 2rem;
+}
+
+.showcase-screenshot-feature img,
+.showcase-screenshot-grid img {
+  display: block;
+  width: 100%;
+}
+
+.showcase-screenshot-grid img {
+  height: 100%;
+  aspect-ratio: 16 / 11;
+  object-fit: contain;
+  object-position: center;
+}
+
+.showcase-screenshot-feature figcaption,
+.showcase-screenshot-grid figcaption {
+  margin-top: 0.6rem;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.showcase-phone-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  align-items: start;
+  gap: 1rem;
+  margin-block: 1.5rem 2rem;
+}
+
+.showcase-phone-grid figure {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+}
+
+.showcase-phone-grid img {
+  display: block;
+  width: 100%;
+  margin: 0;
+  aspect-ratio: 391 / 850;
+  object-fit: contain;
+  object-position: center;
+}
+
+.showcase-phone-grid figcaption {
+  margin-top: 0.35rem;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+@media (max-width: 1100px) {
+  .showcase-phone-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 760px) {
+  .showcase-screenshot-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .showcase-phone-grid {
+    grid-template-columns: 1fr;
+  }
 }
 
 .docs-lightbox-trigger {
