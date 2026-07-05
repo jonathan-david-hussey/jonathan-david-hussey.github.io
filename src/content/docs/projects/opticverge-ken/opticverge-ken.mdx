@@ -44,7 +44,7 @@ tags:
     'AI-Assisted',
   ]
 aiAssisted: true
-reviewed: false
+reviewed: true
 order: 2
 role: 'Author'
 dates: '2026 - present'
@@ -107,30 +107,30 @@ The app had a related problem. If the generated bank was useful, the learner sti
 ## The Design
 
 <Mermaid
-  title="High-level architecture"
+  title="High-level system design"
   chart={`
 flowchart TD
-  PDF["Source PDFs"]
-  Profile["Python ingestion and source profile"]
-  Terms["Term extraction and clustering"]
-  LLM["OpenRouter / OpenAI-compatible LLM generation"]
-  Gates["Verification and coverage gates"]
-  Assets["Bank, profile, cover, and page assets"]
-  App["Flutter practice app"]
-  Local["Local analytics with Drift and SQLite"]
+  Books@{ icon: "igcse:book", form: "square", label: "Source books and rendered pages", pos: "b" }
+  Builder@{ icon: "igcse:terminal", form: "square", label: "Python bank generation system", pos: "b" }
+  Models@{ icon: "igcse:embedding", form: "square", label: "LLM and embedding services", pos: "b" }
+  Gate@{ icon: "igcse:shield-check", form: "square", label: "Verification and coverage boundary", pos: "b" }
+  Bank@{ icon: "igcse:database", form: "square", label: "App-ready bank assets", pos: "b" }
+  App@{ icon: "igcse:phone", form: "square", label: "Flutter practice app", pos: "b" }
+  Local@{ icon: "igcse:database", form: "square", label: "Local sessions and analytics", pos: "b" }
 
-  PDF --> Profile
-  Profile --> Terms
-  Terms --> LLM
-  LLM --> Gates
-  Gates --> Assets
-  Assets --> App
-  App --> Local
-  Gates -- "retry uncovered points" --> LLM
+  Books -->|profile, text, page images| Builder
+  Builder -->|generation and similarity requests| Models
+  Models -->|questions, terms, embeddings| Builder
+  Builder -->|candidate bank| Gate
+  Gate -->|verified questions and evidence| Bank
+  Bank -->|bundled library content| App
+  App -->|answers, hints, reference opens| Local
+  Local -->|resume, weakest-first, focus state| App
+  Gate -->|coverage gaps and rejected items| Builder
 ` }
 />
 
-Ken is split around one durable boundary: the generated bank. The Python pipeline owns PDF ingestion, source profiling, term extraction, LLM-backed generation, verification, coverage reporting, and asset publication. The Flutter app owns library navigation, practice modes, page-reference viewing, session state, and local learner analytics.
+Ken is split around one durable boundary: the verified generated bank. The Python generation system owns PDF ingestion, source profiling, term extraction, LLM-backed generation, verification, coverage reporting, and asset publication. The Flutter app owns library navigation, practice modes, page-reference viewing, session state, and local learner analytics.
 
 The pipeline starts with `build_book.py`. A book build derives the book id, bootstraps metadata, creates a source profile, generates chapters, renders page and cover assets, publishes the per-book bank, and updates the app library index. Each book writes to its own data tree and cache prefix so long runs can resume without mixing artifacts from another source.
 
@@ -139,43 +139,26 @@ The ingestion layer accepts that PDF structure is not uniform. It uses detector 
 Term extraction combines unsupervised, library-backed signals rather than hand-written domain lists. The pipeline uses spaCy noun chunks and POS-aware tokens, scikit-learn TF-IDF, YAKE keywords, KeyBERT semantic relevance, wordfreq common-language scoring, spelling normalization, and fallback tokenization. The clustering pass embeds candidate terms with Sentence Transformers, groups near-duplicates by cosine similarity, chooses a canonical display term, and keeps the merged variants as aliases. Those terms become the vocabulary reviewed by the pipeline and the tags attached to questions in the assembled bank.
 
 <Mermaid
-  title="Term extraction and clustering"
+  title="How source terms become tags"
   direction="TD"
   chart={`
 flowchart TD
-  Pages["Chapter page text"]
-  Candidates["Candidate terms from spaCy, TF-IDF, YAKE, and KeyBERT"]
-  Normalize["Normalize, score, and gate candidates"]
-  Embed["Sentence Transformer embeddings"]
-  Cluster["Cosine-similarity clusters"]
-  Canonical["Canonical terms with aliases"]
-  Tags["Question and chapter tags"]
-  Bank["App-ready question bank"]
+  Pages@{ icon: "igcse:file-document", form: "square", label: "Chapter page text", pos: "b" }
+  Candidates@{ icon: "igcse:text-search", form: "square", label: "Candidate terms", pos: "b" }
+  Rank@{ icon: "igcse:filter", form: "square", label: "Normalize, score, gate", pos: "b" }
+  Cluster@{ icon: "igcse:embedding", form: "square", label: "Semantic clusters", pos: "b" }
+  Tags@{ icon: "igcse:fingerprint", form: "square", label: "Canonical tags and aliases", pos: "b" }
+  Bank@{ icon: "igcse:database", form: "square", label: "App-ready question bank", pos: "b" }
 
   Pages --> Candidates
-  Candidates --> Normalize
-  Normalize --> Embed
-  Embed --> Cluster
-  Cluster --> Canonical
-  Canonical --> Tags
+  Candidates --> Rank
+  Rank --> Cluster
+  Cluster --> Tags
   Tags --> Bank
-
-  subgraph ClusterA["Example cluster: service discovery"]
-    A1["service discovery"]
-    A2["service registry"]
-    A3["registry lookup"]
-  end
-
-  subgraph ClusterB["Example cluster: performance timing"]
-    B1["latency"]
-    B2["response time"]
-    B3["round-trip time"]
-  end
-
-  ClusterA --> Canonical
-  ClusterB --> Canonical
 ` }
 />
+
+The clustering step turns overlapping phrases into one reviewable vocabulary: for example, variants such as `service discovery`, `service registry`, and `registry lookup` can become one canonical tag with aliases, while timing phrases such as `latency`, `response time`, and `round-trip time` stay linked rather than scattering across the bank.
 
 Question generation is coverage-driven. The generator enumerates atomic knowledge points for each page, targets uncovered material, and loops until embedding-similarity coverage reaches the configured target. It does not ask for a fixed number of questions per chapter; the question count emerges from the source.
 
