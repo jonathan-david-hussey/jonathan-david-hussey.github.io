@@ -1,0 +1,171 @@
+---
+title: 'PDF Extractor'
+description: 'A .NET CLI content pipeline that captures documentation websites from JSON profiles, discovers links from static and interactive navigation, removes unwanted page noise, emits PDF/Markdown/text outputs, and merges or transforms the final artifact.'
+category: 'projects'
+tags:
+  [
+    'C#',
+    '.NET',
+    'CLI',
+    'Spectre.Console.Cli',
+    'Playwright',
+    'Web Scraping',
+    'Documentation Capture',
+    'PDF Generation',
+    'Markdown',
+    'Text Extraction',
+    'PDFsharp',
+    'ReverseMarkdown',
+    'HtmlAgilityPack',
+    'Dependency Injection',
+    'JSON Configuration',
+    'xUnit',
+    'Strategy Pattern',
+    'Builder Pattern',
+    'Template Method Pattern',
+    'Adapter Pattern',
+    'Facade Pattern',
+    'Command Pattern',
+    'Chain of Responsibility Pattern',
+    'Pipeline Pattern',
+  ]
+reviewed: true
+aiAssisted: true
+order: 7
+role: 'Author'
+dates: '2024 - 2026'
+roleSummary: 'I built the profile-driven CLI, the acquisition/output/merge/transform configuration model, the Playwright page capture workflow, navigation discovery, page cleanup, Markdown and image handling, PDF merging and transformation, and the test coverage around command and pipeline behavior.'
+metrics:
+  - '6-project .NET solution: CLI, Application, Domain, Infrastructure, SharedKernel, and xUnit test projects'
+  - '113 C# source files with nullable-enabled .NET 10 projects and centrally managed package versions'
+  - '43 xUnit facts and theories covering CLI config loading, pipeline stage routing, downloader behavior, page cleanup, PDF merging, compression settings, async guidance, and PDF transformation'
+  - '3 configured page output formats from the same capture pass: PDF, Markdown, and plain text'
+decisions:
+  - title: 'Make the JSON profile the public contract'
+    detail: 'The CLI exposes `init` and `run`: `init` creates a starter profile, while `run` loads an explicit config path and drives acquisition, output, merge, and transform stages without rewriting the file.'
+    tradeoff: 'Profiles are more verbose than command-line flags, but they make repeatable documentation capture possible across very different websites.'
+  - title: 'Separate acquisition from output'
+    detail: 'The pipeline converts the neutral `ContentPipelineConfig` into the legacy PDF-oriented config, allowing link discovery, page cleanup, PDF rendering, Markdown conversion, text output, merging, and transformation to be configured independently.'
+    tradeoff: 'The compatibility mapping adds ceremony, but it let the project evolve beyond a PDF-only downloader without breaking existing profiles.'
+  - title: 'Use browser behavior as part of extraction'
+    detail: 'Playwright navigation rules can click or hover expandable menus, repeat until stable, wait for selectors, follow navigated links, and return by browser-back or reload/replay strategies before links are extracted.'
+    tradeoff: 'A real browser is heavier than HTTP scraping, but it captures documentation sites whose navigation only appears after client-side interaction.'
+  - title: 'Remove noise before writing artifacts'
+    detail: 'The page modification and Markdown services remove headers, footers, nav, cookie/consent overlays, hidden elements, scripts, style blocks, and arbitrary configured selectors before saving PDF, Markdown, or text.'
+    tradeoff: 'Selector configuration requires per-site judgment, but it keeps final artifacts focused on the content rather than the website chrome.'
+outcome:
+  - 'The tool can turn documentation sites into cleaner offline artifacts by configuring what to discover, what to keep, what to remove, and which formats to write.'
+  - 'The same acquisition profile can produce PDFs for reading, Markdown or text for search and AI context, and merged outputs with filenames, token counts, empty-page removal, and optional final PDF layout transforms.'
+  - 'The codebase demonstrates a layered .NET architecture where CLI commands, configuration compatibility, browser automation, output writing, and PDF post-processing remain separately testable.'
+lessons: 'PdfExtractor started from the visible artifact, a PDF, but the important design problem was configuration. Useful documentation capture depends on knowing where links come from, how navigation opens, which elements are noise, what output formats are required, and how final files will be merged. Once those decisions are represented explicitly, the PDF becomes one product of the pipeline rather than the pipeline itself.'
+---
+
+## Context
+
+PdfExtractor is a .NET command-line tool for capturing documentation websites into controlled offline artifacts. Its name points to the original visible output, but the core activity of the project is broader: configure how a website should be discovered, cleaned, rendered, converted, merged, and optionally transformed.
+
+The assets of the system can be identified as the JSON profile, the acquisition rules, the browser execution service, the page cleanup rules, the output writer, the merger, and the final artifact. Each of these assets matters because documentation sites are not uniform. Some publish simple links in a nav element. Others hide pages behind expandable menus, client-side routes, cookie dialogs, sticky headers, footer noise, sidebars, and images that need to remain available when exported to Markdown.
+
+The project therefore treats website capture as a pipeline rather than a one-off browser print. A user creates a profile, points it at a site, defines how links should be discovered, configures which content should remain, chooses PDF, Markdown, text, or combined outputs, and then lets the CLI run the same process repeatedly.
+
+## The Problem
+
+Documentation is often available online but difficult to reuse offline. A browser can print a single page, but that does not solve the larger problem of gathering a whole documentation set, excluding irrelevant pages, removing navigation and cookie surfaces, keeping only main content, preserving images, and merging the result into an artifact that can be read or used as source material.
+
+The problem was therefore not only PDF extraction. The project had to answer a wider question: how can a documentation website be acquired without carrying the unnecessary information around it? That required a public configuration contract that could describe link acquisition, selector cleanup, browser timing, headers, output formats, merge behavior, and final PDF transformation without changing `Program.cs` for each source.
+
+The resulting system needed to remain operationally explicit. A failed config path, invalid JSON file, or directory passed as a config should fail clearly. A capture run should use an explicit profile path. The profile itself should remain read-only during execution so a successful run does not silently mutate the user's source of truth.
+
+## Constraints
+
+- **Website variability.** Links may come from static navigation, explicit URL lists, sitemaps, child pages, or all discovered links, and some navigation only appears after click or hover interaction.
+- **Content noise.** Headers, footers, sidebars, cookie banners, hidden elements, scripts, styles, dialogs, and site chrome can overwhelm the useful documentation content.
+- **Output variety.** The same captured page may need PDF for reading, Markdown for editable documentation, and plain text for search or AI context.
+- **Image handling.** Markdown exports need to handle remote images through absolute URLs, embedded data URIs, localized image files, optional compression, and size limits.
+- **Run repeatability.** Profiles must be reusable, explicit, and safe to run without being rewritten with default values.
+- **Post-processing needs.** Captured artifacts may need merge ordering, empty-page removal, filename headings, token counting, output compression, or rows/columns PDF layout transformation.
+
+## The Design
+
+<Mermaid
+  title="High-level system design"
+  direction="TD"
+  chart={`
+flowchart TD
+  Profile@{ icon: "igcse:file-document", form: "square", label: "JSON content profile", pos: "b" }
+  CLI@{ icon: "igcse:terminal", form: "square", label: "pdfx init / run", pos: "b" }
+  Config@{ icon: "igcse:filter", form: "square", label: "ContentPipelineConfig mapping", pos: "b" }
+  Acquire@{ icon: "igcse:database", form: "square", label: "Acquisition rules", pos: "b" }
+  Browser@{ icon: "igcse:target", form: "square", label: "Playwright page execution", pos: "b" }
+  Clean@{ icon: "igcse:filter", form: "square", label: "Selector cleanup and CSS", pos: "b" }
+  Outputs@{ icon: "igcse:file-document", form: "square", label: "PDF, Markdown, text outputs", pos: "b" }
+  Merge@{ icon: "igcse:database", form: "square", label: "Merge and token accounting", pos: "b" }
+  Transform@{ icon: "igcse:crop", form: "square", label: "Optional PDF layout transform", pos: "b" }
+  Artifact@{ icon: "igcse:shield-check", form: "square", label: "Clean offline artifact", pos: "b" }
+
+  Profile --> CLI --> Config
+  Config --> Acquire --> Browser --> Clean --> Outputs
+  Outputs --> Merge --> Transform --> Artifact
+  Outputs --> Artifact
+` }
+/>
+
+The public boundary is `ContentPipelineConfig`. It groups the profile into root/output settings, `AcquisitionMode`, `AcquisitionConfig`, `OutputConfig`, `MergeConfig`, and `TransformConfig`. It also supports a legacy `DownloadConfig`, then maps the newer neutral profile into the older PDF-oriented `PdfConfig` internally. That compatibility layer is important because the project moved from a PDF downloader toward a configurable content pipeline without discarding earlier profiles.
+
+The CLI is intentionally small. `Program.cs` wires a .NET host, dependency injection, appsettings, and Spectre.Console.Cli. `pdfx init --config <path>` writes a starter JSON file with working acquisition, output, and merge defaults. `pdfx run --config <path>` loads the supplied file, validates that it exists and is valid JSON, and calls the pipeline. During `run`, the config file is not rewritten.
+
+`ContentPipeline` owns the stage order. It applies final compression settings, runs acquisition when configured, runs merging when `MergeConfig` exists, and runs transformation when `TransformConfig` exists. Acquisition modes select between normal link extraction, child-link extraction, all-link extraction, or no acquisition. This makes the tool useful both for browser-captured documentation and for post-processing an existing directory of files.
+
+<Mermaid
+  title="Website acquisition flow"
+  direction="TD"
+  chart={`
+flowchart TD
+  Start@{ icon: "igcse:file-document", form: "square", label: "Target URL, sitemap, or explicit URLs", pos: "b" }
+  Discover@{ icon: "igcse:target", form: "square", label: "Discover links", pos: "b" }
+  Nav@{ icon: "igcse:terminal", form: "square", label: "Click/hover navigation rules", pos: "b" }
+  Filter@{ icon: "igcse:filter", form: "square", label: "Apply include/exclude URL rules", pos: "b" }
+  Page@{ icon: "igcse:file-document", form: "square", label: "Open each page with retry", pos: "b" }
+  Ready@{ icon: "igcse:target", form: "square", label: "Wait for content selectors", pos: "b" }
+  Modify@{ icon: "igcse:filter", form: "square", label: "Remove noise and keep main content", pos: "b" }
+  Write@{ icon: "igcse:file-document", form: "square", label: "Write configured outputs", pos: "b" }
+
+  Start --> Discover
+  Discover --> Nav
+  Nav --> Filter
+  Filter --> Page
+  Page --> Ready
+  Ready --> Modify
+  Modify --> Write
+` }
+/>
+
+Link discovery can take several paths. If `UseSitemap` is enabled, links are read from the sitemap. If `TargetUrls` is supplied, those explicit URLs become the work list. Otherwise the downloader opens the target page in Playwright, applies navigation discovery rules, reads the HTML, extracts links, merges navigated links with extracted links, filters them, de-duplicates them, and assigns stable indexes.
+
+Navigation discovery exists for modern documentation sites where the link list is not present until the page is interacted with. A rule can click or hover elements, scope itself to a selector, apply to one or all matching elements, repeat until the target link count stabilizes, wait for a selector or delay, navigate to discovered pages, and return by browser back or by reloading and replaying previous expansion rules. This lets the profile describe site behavior rather than hard-code site-specific logic.
+
+Page capture is handled by `PdfDownloader`, `PageExecutionService`, `PageModificationService`, and `PageOutputWriter`. A page is opened with retry behavior, optional headers are applied, the browser waits for the configured ready selector and optionally network idle, print media is emulated, then cleanup runs. Cleanup can remove the first match for selectors, remove all matches for selectors, keep only specific content selectors by removing everything else, and apply custom CSS rules before output is written.
+
+## Output And Merge
+
+The output writer can save multiple formats from the same prepared page. PDF output uses Playwright's A4 PDF rendering with scale and print background settings. Text output loads the page HTML through HtmlAgilityPack and writes the inner text. Markdown output selects the main content or body, removes scripts, styles, hidden elements, cookie/consent overlays, and other noise, normalizes image URLs, processes images, and converts the resulting HTML through ReverseMarkdown.
+
+Markdown image handling is treated as part of the artifact. Images may remain remote, be embedded as data URIs, or be localized beside the Markdown file in an image folder. The processor fetches HTTP images with configured headers, validates image content types, applies optional compression, respects maximum byte limits, and removes `srcset` so the Markdown export has a stable image source.
+
+The merge stage handles both PDFs and text-like files. For PDFs, it orders files naturally, counts pages, optionally extracts text with PdfPig, removes pages with no content, records token counts, writes merged text or Markdown when requested, and saves the merged PDF with optional final compression. For file merging, it can include filenames as headings, filter file types, target explicit files, exclude directories, and compute token counts with the tokenizer used by the application.
+
+The transform stage is a final PDF layout step. Given a source PDF, it can create an A4 portrait or landscape output, select a page range, and place source pages into configurable rows and columns per sheet while preserving aspect ratio. This is useful when the captured output needs to be condensed or rearranged after merging.
+
+## Architecture
+
+The solution is split into CLI, Application, Domain, Infrastructure, SharedKernel, and Tests projects. The CLI owns commands and config-file validation. The Application project owns the services: link extraction, navigation discovery, browser execution, page modification, output writing, Markdown image processing, content acquisition, merging, transformation, concurrency, and compression. Domain holds simple entities such as links and page information. SharedKernel holds the public configuration objects and enums.
+
+This separation matters because each stage has a different failure mode. Config loading should fail before a browser launches. Link discovery should be testable without merging PDFs. Page modification should be testable as selector logic. Merging should be testable with local files. The xUnit suite reflects those boundaries with tests for CLI config behavior, content pipeline routing, downloader defaults and selectors, PDF merging, compression settings, async guidance, and transform behavior.
+
+The dependency graph is pragmatic rather than minimal: Playwright for real browser capture, PDFsharp and iTextSharp for PDF operations, PdfPig for text extraction, ReverseMarkdown and HtmlAgilityPack for Markdown conversion and cleanup, GroupDocs.Markdown compatibility paths for PDF-to-Markdown conversion, and Microsoft tokenizers for token accounting. The tool sits at the intersection of web acquisition and document post-processing, so a single narrow library would not cover the whole workflow.
+
+## Archival Status
+
+It must be noted that PdfExtractor is an exploratory tool whose name is narrower than its current behavior. Some compatibility paths and older service names still refer to PDF downloading, but the newer `ContentPipelineConfig`, `AcquisitionConfig`, and `OutputConfig` reveal the broader design: capture configured website content and produce the clean artifact the profile asks for.
+
+As a portfolio project, its value is in the configuration model and pipeline boundaries. It demonstrates how a website capture problem can be decomposed into acquisition, interaction, cleanup, output, merge, and transform stages, each of which can be configured and tested separately.

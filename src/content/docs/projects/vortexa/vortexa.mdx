@@ -1,0 +1,158 @@
+---
+title: 'Vortexa'
+description: 'A React and TypeScript technical-challenge dashboard that loads GeoJSON boat-ramp data, summarizes it with interactive Nivo charts, and synchronizes chart filters with a Leaflet map through Redux Toolkit state.'
+category: 'projects'
+tags:
+  [
+    'React',
+    'TypeScript',
+    'Redux Toolkit',
+    'React Redux',
+    'Material UI',
+    'Nivo',
+    'Leaflet',
+    'React Leaflet',
+    'GeoJSON',
+    'Dashboard',
+    'Data Visualization',
+    'Create React App',
+    'CRACO',
+    'Jest',
+    'React Testing Library',
+    'Observer Pattern',
+    'State Pattern',
+    'Strategy Pattern',
+    'Facade Pattern',
+  ]
+reviewed: true
+order: 8
+role: 'Author'
+dates: '2024'
+roleSummary: 'I built the challenge app: the GeoJSON API boundary, Redux slice, derived selectors, chart widgets, map widget, typed hooks, Material UI dashboard layout, path aliases, and basic component and reducer tests.'
+metrics:
+  - '3 dashboard widgets: construction-material bar chart, ramp-size pie chart, and interactive Leaflet GeoJSON map'
+  - '23 TypeScript and TSX source files across API, store, hooks, types, dashboard, widgets, and tests'
+  - '9 Jest/React Testing Library test cases covering app rendering, dashboard/widgets, and boat-ramp reducer behavior'
+  - 'One shared Redux view model keeps chart selections and map bounds aligned across the dashboard'
+decisions:
+  - title: 'Use GeoJSON as the source boundary'
+    detail: 'The app fetches the public boat-ramp GeoJSON dataset through a small API function and keeps the original feature collection in Redux so selectors and widgets share one source of truth.'
+    tradeoff: 'The app depends on the remote dataset being available, but the data contract remains simple and directly compatible with Leaflet.'
+  - title: 'Keep a filtered shared view'
+    detail: 'The Redux slice stores both the original data and `sharedView`, then updates that view when the user filters by material, size category, or visible map bounds.'
+    tradeoff: 'The state is slightly duplicated, but charts and map can consume the same filtered feature collection without recomputing every view locally.'
+  - title: 'Make charts interactive filters'
+    detail: 'Nivo bar and pie widgets dispatch material and size-category actions on click, turning summary charts into controls for the rest of the dashboard.'
+    tradeoff: 'Only one chart filter is active at a time, which keeps the challenge solution understandable but limits compound filtering.'
+  - title: 'Force GeoJSON remounts for map updates'
+    detail: 'The map widget keys the GeoJSON layer by a `version` value so React-Leaflet receives a fresh layer when Redux filtering changes.'
+    tradeoff: 'Remounting is a blunt but reliable update path for a small challenge dataset.'
+outcome:
+  - 'The application presents a compact operational dashboard: construction material distribution, size distribution, and spatial distribution are visible together.'
+  - 'A chart click or map move changes the shared data view, so the dashboard behaves as one coordinated surface rather than three disconnected widgets.'
+  - 'The project demonstrates a time-boxed React/Redux implementation with typed state, geospatial rendering, charting, Material UI layout, and test coverage around the core reducer and widget render paths.'
+lessons: 'The useful part of a small dashboard is not the number of widgets; it is whether every widget is looking at the same state. Vortexa made the GeoJSON collection the asset, then treated material filters, size filters, and map bounds as different ways of asking for a smaller view of that asset.'
+---
+
+## Context
+
+Vortexa is a React and TypeScript dashboard built for a technical challenge. The application loads a public GeoJSON dataset of boat ramps, summarizes the data through charts, and displays the same feature collection on a Leaflet map. Its purpose is not to model a large platform; it is to show how quickly a small geospatial dataset can be turned into a coordinated dashboard.
+
+The key assets in the application are the GeoJSON feature collection, the Redux slice that owns the original and filtered views, the derived selectors, and the three dashboard widgets. Each asset has a distinct role. The API boundary fetches the data, the store keeps the canonical state, selectors turn features into chart-ready values, and the UI makes those values visible and interactive.
+
+The project was developed over a short challenge window. That constraint shaped the implementation: use mature libraries for the expensive parts, keep custom code focused on state and data flow, and add enough tests to make the core interactions visible without overbuilding the application.
+
+## The Problem
+
+The underlying data is spatial, categorical, and numeric at the same time. A list of boat-ramp records is not very useful by itself. A reviewer needs to understand where ramps are located, which construction materials appear most often, and how the ramp areas fall into useful size categories.
+
+The problem was therefore not only to render a map or a chart. The application had to provide a shared view of the data where the map and charts could respond to the same filter state. If a user selects a construction material, the visible map and size chart should reflect that subset. If the map bounds change, the chart data should be recalculated from the features visible in the current viewport.
+
+This required a state model that was small enough for a challenge app but explicit enough to carry the dashboard behavior.
+
+## Constraints
+
+- **Time-boxed delivery.** The project was implemented as a coding challenge, so library choice and scope control mattered.
+- **Remote data source.** The app fetches a public GeoJSON file at runtime rather than bundling a local dataset.
+- **Geospatial shape data.** Features are rendered as GeoJSON multipolygons and filtered by map bounds rather than simple point markers.
+- **Coordinated views.** Chart selections and map movements need to update a shared feature collection, not only local component state.
+- **Responsive layout.** The dashboard has to fit summary charts and a map into a simple Material UI grid.
+- **Testable state.** The filtering behavior belongs in Redux reducers and selectors where it can be exercised separately from chart and map rendering.
+
+## The Design
+
+<Mermaid
+  title="High-level dashboard design"
+  direction="TD"
+  chart={`
+flowchart TD
+  Data@{ icon: "igcse:file-document", form: "square", label: "Remote boat_ramps.geojson", pos: "b" }
+  Api@{ icon: "igcse:terminal", form: "square", label: "boatRampsAPI", pos: "b" }
+  Store@{ icon: "igcse:database", form: "square", label: "Redux boatRamps slice", pos: "b" }
+  Original@{ icon: "igcse:file-document", form: "square", label: "Original FeatureCollection", pos: "b" }
+  View@{ icon: "igcse:filter", form: "square", label: "Filtered sharedView", pos: "b" }
+  Material@{ icon: "igcse:target", form: "square", label: "Material bar chart", pos: "b" }
+  Size@{ icon: "igcse:target", form: "square", label: "Size category pie chart", pos: "b" }
+  Map@{ icon: "igcse:database", form: "square", label: "Leaflet GeoJSON map", pos: "b" }
+
+  Data --> Api --> Store
+  Store --> Original
+  Store --> View
+  View --> Material
+  View --> Size
+  View --> Map
+  Material --> Store
+  Size --> Store
+  Map --> Store
+` }
+/>
+
+The application starts in `App.tsx`. On first render it checks the Redux request status, dispatches `fetchBoatRampsAsync` when the state is `idle`, and renders the dashboard. The API layer is deliberately small: `getBoatRampsAsync` fetches the public GeoJSON file and returns a `FeatureCollection`.
+
+The Redux slice is the center of the system. It stores `data`, which is the original feature collection, and `sharedView`, which is the feature collection currently visible to widgets. It also stores request status, an incrementing `version`, and optional filter state for material, size category, and map bounds.
+
+<Mermaid
+  title="Filter and view updates"
+  direction="TD"
+  chart={`
+flowchart TD
+  Action{"User action"}
+  Material@{ icon: "igcse:target", form: "square", label: "Click material bar", pos: "b" }
+  Category@{ icon: "igcse:target", form: "square", label: "Click size slice", pos: "b" }
+  Bounds@{ icon: "igcse:database", form: "square", label: "Move or zoom map", pos: "b" }
+  Reducer@{ icon: "igcse:filter", form: "square", label: "Redux reducer filters original data", pos: "b" }
+  Reset@{ icon: "igcse:filter", form: "square", label: "Clear competing filters", pos: "b" }
+  Version@{ icon: "igcse:fingerprint", form: "square", label: "Increment view version", pos: "b" }
+  Widgets@{ icon: "igcse:file-document", form: "square", label: "Charts and map re-render", pos: "b" }
+
+  Action --> Material
+  Action --> Category
+  Action --> Bounds
+  Material --> Reducer
+  Category --> Reducer
+  Bounds --> Reducer
+  Reducer --> Reset
+  Reset --> Version
+  Version --> Widgets
+` }
+/>
+
+The material chart uses a Nivo bar chart. Its selector first creates a sorted set of all materials from the original data so empty categories remain visible, then counts matching materials in the current shared view. Clicking a bar dispatches `updateMaterialFilter`, toggling that material and clearing the size and map filters.
+
+The size chart uses a Nivo pie chart. Its selector groups features into three area bands: `0-50`, `50-200`, and `200-526`. Clicking a slice dispatches `updateCategoryFilter`, toggling the selected size category and rebuilding the shared view from the original feature collection.
+
+The map uses React-Leaflet. `Dashboard` computes the initial map center from the first multipolygon feature and wraps `BoatRampsMapWidget` in a `MapContainer`. The map widget renders the filtered GeoJSON and listens for `zoomend` and `moveend`; each event dispatches the current north-east and south-west bounds so the store can filter features whose multipolygon bounds intersect the visible map area.
+
+## Implementation Notes
+
+The UI composition is intentionally direct. Material UI `Container`, `Grid`, and `Paper` components provide the dashboard frame. The chart widgets own only their library-specific rendering and click dispatch. The map widget owns Leaflet events and rendering. Derived data lives in selectors rather than in component-local transformations.
+
+The `version` field is a practical bridge between Redux and React-Leaflet. Because the GeoJSON layer can be sticky when data changes, the widget uses a `map-${viewVersion}` key to force the layer to remount after a filter update. It is not an elaborate abstraction, but for the size and purpose of the challenge it keeps the map honest.
+
+The project uses CRACO to support the `@app/*` path alias from `tsconfig.paths.json`, keeping imports short across features, stores, hooks, and API modules. Tests use React Testing Library for render coverage around the app, dashboard, and widgets, plus reducer tests for the core boat-ramp state transitions.
+
+## Archival Status
+
+It must be noted that Vortexa is a technical-challenge project rather than a maintained production dashboard. It reflects a short implementation period, React 17-era dependencies, Create React App conventions, and a narrow public dataset.
+
+As a portfolio project, its value is in the data-flow design. It demonstrates how to take a GeoJSON source, make Redux the shared state boundary, derive chart data from selectors, use charts as filters, and keep a map synchronized with the same filtered feature collection.
