@@ -8,6 +8,7 @@ The format is based on Keep a Changelog, and this project follows semantic versi
 
 ### Changed
 
+- Rewrote the README to describe the portfolio site, content model, commands, search, and GitHub Pages deployment.
 - Switched the GitHub Pages deploy workflow to Astro's official GitHub Action.
 - Added Home to the header navigation menu.
 - Reframed the site-wide professional title around staff-level engineering with an architecture focus.
