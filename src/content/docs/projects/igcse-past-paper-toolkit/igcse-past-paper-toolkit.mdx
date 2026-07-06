@@ -22,6 +22,15 @@ tags:
     'Ruff',
     'MyPy',
     'Mutation Testing',
+    'Claude Code',
+    'OpenAI Codex',
+    'OpenCode',
+    'OpenRouter',
+    'Strategy Pattern',
+    'Builder Pattern',
+    'Template Method Pattern',
+    'Chain of Responsibility Pattern',
+    'Pipeline Pattern',
   ]
 aiAssisted: true
 reviewed: true
@@ -69,7 +78,7 @@ It works with authentic exam content rather than generated questions. The multip
 
 A PDF is a poor source of practice material. Cambridge papers contain the questions and answers, but nothing about their structure is directly accessible: there is no reliable list of where each question starts and ends, which option is correct, whether a diagram belongs to the question, or which questions cover a given topic. Two papers from different series will also repeat the same question with different numbering.
 
-So the core problem was extraction, not authoring. The toolkit had to read varied Cambridge PDFs, find and crop each question with its options and figures intact, decide which questions match a requested topic, pair each one to the correct answer in its mark scheme, remove duplicates, and emit an output a learner can actually revise from — all while recording enough metadata to audit and reproduce the run.
+So the core problem was extraction, not authoring. The toolkit had to read varied Cambridge PDFs, find and crop each question with its options and figures intact, decide which questions match a requested topic, pair each one to the correct answer in its mark scheme, remove duplicates, and emit an output a learner can actually revise from, all while recording enough metadata to audit and reproduce the run.
 
 ## Constraints
 
@@ -102,13 +111,13 @@ Here is the kind of capture the pipeline is designed to preserve: a real multipl
   direction="TD"
   chart={`
 flowchart TD
-  QP@{ icon: "igcse:file-pdf", form: "square", label: "Question papers", pos: "b" }
+  QP@{ icon: "igcse:file-document", form: "square", label: "Question papers", pos: "b" }
   MS@{ icon: "igcse:file-certificate", form: "square", label: "Mark schemes", pos: "b" }
   Consolidate@{ icon: "igcse:terminal", form: "square", label: "igcse-consolidate", pos: "b" }
   Extract@{ icon: "igcse:text-box-search", form: "square", label: "Extract & detect", pos: "b" }
   Process@{ icon: "igcse:filter", form: "square", label: "Match, filter, de-dupe", pos: "b" }
   Pair@{ icon: "igcse:file-link", form: "square", label: "Pair answers", pos: "b" }
-  Out@{ icon: "igcse:file-pdf", form: "square", label: "Question PDFs, answer PDFs, manifest", pos: "b" }
+  Out@{ icon: "igcse:file-document", form: "square", label: "Question PDFs, answer PDFs, manifest", pos: "b" }
   Index@{ icon: "igcse:database", form: "square", label: "Extracted question index", pos: "b" }
   Similar@{ icon: "igcse:terminal", form: "square", label: "search similar", pos: "b" }
   Classical@{ icon: "igcse:text-search", form: "square", label: "Classical string matches", pos: "b" }
@@ -126,16 +135,16 @@ flowchart TD
 
 The toolkit is organised as a pipeline around one durable boundary: the pairing between a question and its mark-scheme answer, captured in a manifest. The `igcse-consolidate` command drives a single run through `run_consolidation`, which owns extraction, filtering, de-duplication, answer lookup, and output writing. Everything is split into small, separately testable stages, with the PDF reading isolated behind PyMuPDF.
 
-A run begins by inspecting the mark schemes. Answer-style detection reads each `_ms_` file, counts compact answer rows such as `1 A 1` — question number, option letter, marks — and looks for structured answer blocks anchored to question identifiers. From those signals it classifies the folder as `mcq`, `longform`, or `mixed` with a confidence score. That classification chooses the extraction mode: per-page detection for multiple-choice papers, or cross-page span extraction for structured papers whose answers run across page breaks.
+A run begins by inspecting the mark schemes. Answer-style detection reads each `_ms_` file, counts compact answer rows such as `1 A 1`, question number, option letter, marks, and looks for structured answer blocks anchored to question identifiers. From those signals it classifies the folder as `mcq`, `longform`, or `mixed` with a confidence score. That classification chooses the extraction mode: per-page detection for multiple-choice papers, or cross-page span extraction for structured papers whose answers run across page breaks.
 
-Extraction then reads the question papers. It finds question markers by their position — the number in the left margin — and confirms each one with stem evidence and a running sequence check, so a stray number in the body of a question is not mistaken for a new question. For each marker it computes a tight visual clip that grows down to include the options and any diagram, using pixel-content detection to decide where the answer options end and whether there is post-option artwork to keep. The result for every question is both its extracted text and a precise bounding box.
+Extraction then reads the question papers. It finds question markers by their position, the number in the left margin, and confirms each one with stem evidence and a running sequence check, so a stray number in the body of a question is not mistaken for a new question. For each marker it computes a tight visual clip that grows down to include the options and any diagram, using pixel-content detection to decide where the answer options end and whether there is post-option artwork to keep. The result for every question is both its extracted text and a precise bounding box.
 
 <Mermaid
   title="Question detection and consolidation"
   direction="TD"
   chart={`
 flowchart TD
-  Pages@{ icon: "igcse:file-pdf", form: "square", label: "Question paper pages", pos: "b" }
+  Pages@{ icon: "igcse:file-document", form: "square", label: "Question paper pages", pos: "b" }
   Markers@{ icon: "igcse:target", form: "square", label: "Question markers, stem, sequence checks", pos: "b" }
   Clip@{ icon: "igcse:crop", form: "square", label: "Tight visual clip: stem, options, diagrams", pos: "b" }
   Text@{ icon: "igcse:file-document", form: "square", label: "Extracted question text", pos: "b" }
@@ -144,7 +153,7 @@ flowchart TD
   Skip@{ icon: "igcse:filter", form: "square", label: "Skip", pos: "b" }
   Fingerprint@{ icon: "igcse:fingerprint", form: "square", label: "Stem plus option fingerprint", pos: "b" }
   Pair@{ icon: "igcse:file-link", form: "square", label: "Pair to mark-scheme answer", pos: "b" }
-  Item@{ icon: "igcse:file-pdf", form: "square", label: "Consolidated item and manifest row", pos: "b" }
+  Item@{ icon: "igcse:file-document", form: "square", label: "Consolidated item and manifest row", pos: "b" }
 
   Pages --> Markers
   Markers --> Clip
@@ -159,12 +168,12 @@ flowchart TD
 ` }
 />
 
-Topic matching starts from the term the run asks for. Each question's extracted text is compared against that topic and any aliases supplied alongside it — synonyms and acronym expansions — using whole-word matching for short terms such as acronyms and padded-phrase matching for longer terms, so a partial word never produces a false hit. Because the match runs on the extracted question text, the same mechanism works for any IGCSE subject without special-casing the content.
+Topic matching starts from the term the run asks for. Each question's extracted text is compared against that topic and any aliases supplied alongside it, synonyms and acronym expansions, using whole-word matching for short terms such as acronyms and padded-phrase matching for longer terms, so a partial word never produces a false hit. Because the match runs on the extracted question text, the same mechanism works for any IGCSE subject without special-casing the content.
 
 Above the topic match sits a set of composable filters. A run can require that all of a list of terms appear, that at least one appears, or that certain terms are excluded; it can keep only questions whose correct option or final prompt is itself topic-related by reading the actual answer from the mark scheme; and it can select questions positionally with a compact selector syntax such as `first`, `last`, `even`, `odd`, `8-11`, or `first 5`. Because Cambridge reuses questions between series, a de-duplication pass fingerprints each question from stopword-filtered stem tokens plus its four normalized option texts, collapses repeats to one rendered item, and records the papers each duplicate came from.
 
 Answer lookup closes the loop. For multiple-choice papers a regular expression pulls the option letter and marks for each question number; for structured papers the tool locates the answer block and its page clips. Output writing then produces three artifacts per run: a questions PDF where each item is a tight, high-DPI crop labelled with its paper and question number and made searchable through an embedded OCR text layer; an answers PDF, either a compact table or rendered longform answer clips; and a 31-column manifest CSV that records the variant, detected answer style and confidence, source paths, matched term, answer, correct option, status, fingerprint, duplicate sources, and clip coordinates for every item. An optional combined PDF places questions first and answers at the end.
 
-Alongside the extractor sits a similar-question search with two retrieval strategies over an index of extracted questions. A classical strategy returns questions whose text contains a given phrase, ranked by frequency and token overlap; a hybrid strategy takes a source question and blends semantic embedding similarity with keyword and token overlap, nudged by same-syllabus and question-representation signals. Embeddings come from a Sentence Transformers model, with a deterministic NumPy fallback so an index still builds when the model is unavailable. The whole codebase is held to a strict, custom quality gate — a single runner that orchestrates Ruff, MyPy, Bandit, import-linter, Xenon, Radon, complexipy, pip-audit, pytest, coverage at an 85% branch threshold, Vulture, and Interrogate, with mutation testing available on demand — because PDF and text pipelines fail quietly unless their boundaries are continuously checked.
+Alongside the extractor sits a similar-question search with two retrieval strategies over an index of extracted questions. A classical strategy returns questions whose text contains a given phrase, ranked by frequency and token overlap; a hybrid strategy takes a source question and blends semantic embedding similarity with keyword and token overlap, nudged by same-syllabus and question-representation signals. Embeddings come from a Sentence Transformers model, with a deterministic NumPy fallback so an index still builds when the model is unavailable. The whole codebase is held to a strict, custom quality gate, a single runner that orchestrates Ruff, MyPy, Bandit, import-linter, Xenon, Radon, complexipy, pip-audit, pytest, coverage at an 85% branch threshold, Vulture, and Interrogate, with mutation testing available on demand, because PDF and text pipelines fail quietly unless their boundaries are continuously checked.
 
 Because the extraction, matching, and output stages are decoupled and individually tested, adding another Cambridge IGCSE subject is a matter of pointing the tool at new papers rather than changing the pipeline.
