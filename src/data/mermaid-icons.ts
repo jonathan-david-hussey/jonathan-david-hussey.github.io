@@ -45,6 +45,10 @@ export const iconPack = {
     terminal: {
       body: `<g ${stroke}><rect x="3.5" y="5" width="17" height="14" rx="2"/><path d="M7 9l3 3-3 3M12 15h5"/></g>`,
     },
+    // Event/message handoff: an envelope.
+    message: {
+      body: `<g ${stroke}><rect x="3.5" y="6" width="17" height="12" rx="2"/><path d="M4.5 7.5l7.5 5.5 7.5-5.5"/><path d="M4.8 16.5l5-4M19.2 16.5l-5-4"/></g>`,
+    },
     // Mobile app shell.
     phone: {
       body: `<g ${stroke}><rect x="7" y="3" width="10" height="18" rx="2"/><path d="M10 6h4M11 18h2"/></g>`,
