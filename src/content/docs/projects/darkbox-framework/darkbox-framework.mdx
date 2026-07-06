@@ -1,66 +1,153 @@
 ---
-title: 'DarkBoxFramework'
-description: 'A Python research framework for evolving image-processing pipelines for object recognition, combining scikit-image transforms, scikit-learn classifiers, and AIS plus simulated annealing optimization.'
+title: 'Darkbox Framework'
+description: 'A Python research framework that treats an object-recognition pipeline as an evolvable asset: image transforms are encoded as DNA, evaluated against classifier metrics, mutated through metaheuristic search, and persisted as experiment evidence.'
 category: 'projects'
-tags: ['Python', 'scikit-image', 'scikit-learn', 'joblib', 'NumPy', 'Matplotlib', 'MySQL', 'Metaheuristics']
+tags:
+  [
+    'Python',
+    'Computer Vision',
+    'Object Recognition',
+    'scikit-image',
+    'scikit-learn',
+    'joblib',
+    'NumPy',
+    'Matplotlib',
+    'MySQL',
+    'Metaheuristics',
+    'Artificial Immune System',
+    'Simulated Annealing',
+    'Feature Engineering',
+    'Computational Intelligence',
+    'Strategy Pattern',
+    'Builder Pattern',
+    'Template Method Pattern',
+    'Factory Pattern',
+    'Pipeline Pattern'
+  ]
+reviewed: true
+aiAssisted: false
 order: 5
 role: 'Author'
 dates: '2014 - 2016'
-roleSummary: 'I built the experimental pipeline encoding, transform registry, optimizer implementations, experiment scoring, persistence paths, and serialized learner outputs.'
+roleSummary: 'I built the experimental pipeline encoding, transform registry, optimizer implementations, mutation paths, classifier evaluation loop, persistence targets, detection scripts, and serialized learner outputs.'
 metrics:
-  - '56 image transform classes covering filters, feature extraction, morphology, thresholding, rank filters, and exposure adjustments'
-  - '7 optimizer implementations, including an Artificial Immune System plus Simulated Annealing search path'
-  - '33 serialized learner artifacts produced from evolved image-processing pipelines'
+  - '50 registered transform operations spanning filters, edge detectors, feature extraction, morphology, thresholding, rank filters, and exposure adjustments'
+  - '7 optimizer implementations or scaffolds, including the working Artificial Immune System plus Simulated Annealing path'
+  - '33 serialized learner artifacts preserved from evolved image-processing runs'
+  - '5 cross-validation scoring signals captured per candidate: accuracy, F1, precision, recall, and Matthews correlation'
 decisions:
-  - title: 'Encode pipelines as DNA'
-    detail: 'A candidate solution is an ordered list of transforms and parameters, which lets the optimizer mutate image-processing steps rather than only classifier settings.'
-    tradeoff: 'The search space becomes large and noisy.'
-  - title: 'Wrap transforms behind a registry'
-    detail: 'Filters, feature extractors, morphology operations, thresholding, rank filters, and exposure adjustments share a common interface for search.'
-    tradeoff: 'Generic wrappers hide some operation-specific tuning knobs.'
-  - title: 'Combine AIS with simulated annealing'
-    detail: 'The main optimizer scores a population, mutates candidates with rank-influenced pressure, and uses simulated annealing as part of replacement decisions.'
-    tradeoff: 'The hybrid path is harder to explain than a single textbook optimizer.'
-  - title: 'Record experiments through multiple sinks'
-    detail: 'Metrics and artifacts can be written to flat files, MySQL-backed records, HTTP posting paths, and serialized learner files.'
-    tradeoff: 'Research convenience created more persistence code than a narrow package would need.'
+  - title: 'Treat the pipeline as the thing being optimized'
+    detail: 'A candidate solution is encoded as DNA: an ordered sequence of transform names and parameter values that can be built into concrete scikit-image operations before classifier scoring.'
+    tradeoff: 'The search can explore feature-engineering choices directly, but the combination of transform order, transform parameters, and classifier behavior creates a large and noisy search space.'
+  - title: 'Place heterogeneous transforms behind one registry'
+    detail: 'The transform registry maps operation names to constructors and parameter boundaries, allowing blur, edge, feature, morphology, threshold, rank, and exposure operations to be selected through the same optimizer-facing interface.'
+    tradeoff: 'The common contract made automated search possible, but it also flattened operation-specific nuance that a hand-tuned image pipeline might expose more deliberately.'
+  - title: 'Score every candidate through classifier behavior'
+    detail: 'Each DNA sequence is materialized into transforms, applied across the image set in parallel, flattened into classifier inputs, and assessed with stratified cross-validation metrics.'
+    tradeoff: 'This tied fitness to the task rather than to an abstract image-quality measure, but it made each search generation computationally expensive.'
+  - title: 'Combine population search with simulated annealing'
+    detail: 'The main AISSA path creates a population, scores it, sorts it by fitness, applies rank-influenced mutation, and uses a simulated-annealing tolerance when deciding whether mutated candidates replace originals.'
+    tradeoff: 'The hybrid gave the search a route out of local optima, but it was harder to explain and tune than a single textbook optimizer.'
 outcome:
-  - 'The framework can evolve image-processing pipelines across a broad transform library and score scikit-learn classifiers from the generated features.'
-  - 'Archived learner artifacts and experiment outputs preserve evidence from real research runs.'
-  - 'The project demonstrates early hands-on work with automated feature engineering, computer vision, and metaheuristic optimization.'
-lessons: 'Exploratory research code still benefits from production habits: common interfaces, repeatable scoring, recorded outputs, and clear artifacts. The lasting pattern is to make the experiment flexible without making results disposable.'
+  - 'The framework could construct and evaluate image-processing pipelines automatically instead of relying on one fixed hand-authored feature path.'
+  - 'Experiment outputs were recorded through text files, MySQL-backed persistence, HTTP posting paths, and pickled learner artifacts so results were inspectable after long runs.'
+  - 'The repository remains useful as evidence of early hands-on work with computer vision, automated feature engineering, evolutionary computation, and experiment harness design.'
+lessons: 'DarkBoxFramework taught me that exploratory research systems still need durable engineering boundaries. The important asset was not any single transform or classifier, but the ability to encode a hypothesis, evaluate it consistently, record the result, and then mutate the next hypothesis without losing the evidence that led there.'
 ---
 
 ## Context
 
-DarkBoxFramework is a Python research framework for automated object recognition. It explores a practical question from computer vision work: instead of choosing image-processing steps by hand, can a system search for a better sequence of transforms and classifier settings by treating the pipeline itself as something to optimize?
+DarkBoxFramework is an archival Python research framework for automated object recognition. Its core activity was to discover image-processing pipelines rather than manually prescribe them. The assets of the system can be identified as the transform library, the DNA representation, the optimizer population, the classifier scoring loop, and the experiment records produced from each run.
+
+The project came from a practical computer-vision problem. A useful object detector often depends on a sequence of preprocessing and feature-extraction choices: grayscale conversion, resizing, edge detection, morphology, texture features, thresholding, normalization, and finally classifier training. In a manual workflow each of those choices has to be selected, parameterized, tested, and revised by hand.
+
+DarkBoxFramework turns that workflow into a search problem. A candidate pipeline is encoded as a sequence of transform names and parameters, built into concrete transform objects, applied to a labelled image set, and scored through a scikit-learn classifier. The best candidates are retained, mutated, replaced, and recorded as evidence for the next generation.
 
 ## The Problem
 
-Image-recognition experiments can become a manual feature-engineering loop: choose transforms, tune parameters, train a classifier, compare scores, and repeat. This project tried to automate that loop by representing the pipeline itself as the thing being searched.
+The problem was not simply to classify images. It was to identify whether the feature-engineering process itself could be automated in a way that remained measurable. If the framework only trained a classifier, then the preprocessing path would still be an external assumption. If it only generated image filters, then it would not know whether those filters improved recognition.
+
+The required result was therefore a closed experimental loop. The framework had to build a candidate pipeline, apply it consistently to every image, derive classifier inputs, evaluate the result through repeatable metrics, and then feed that score back into the optimizer. Each step had to be recorded because a search that cannot explain which configuration produced a score is not useful after the run has finished.
+
+This created a second concern: heterogeneity. The operations under consideration were not equivalent. A Gaussian blur has a sigma parameter, a local binary pattern has radius and point settings, an edge detector may have thresholds, and several morphology operations have structuring-element sizes. The framework needed a common representation without pretending the underlying operations were the same.
 
 ## Constraints
 
-- **Huge search space.** Combining transform order, transform parameters, and classifier settings creates many candidate pipelines.
-- **Heterogeneous operations.** Image filters, feature descriptors, morphology, thresholding, and classifiers need a common optimizer-facing interface.
-- **Repeatable evaluation.** Every candidate must be scored consistently across a training image set.
-- **Research visibility.** Experiment metrics and artifacts need to be recorded for later inspection.
-- **Archival status.** The project reflects experimental research code from 2014 to 2016 rather than a current production package.
+- **Large search space.** Transform order, transform selection, parameter values, classifier choice, image size, and dataset composition all affected the final score.
+- **Heterogeneous image operations.** Filters, edge detectors, feature descriptors, morphology operations, thresholding, rank filters, and exposure adjustments had to be selected through one optimizer-facing mechanism.
+- **Task-based fitness.** A candidate was only valuable if it improved recognition, so scoring had to be tied to classifier behavior rather than to a visual preference.
+- **Expensive evaluation.** Every candidate required transforming the training image set, flattening feature arrays, and running cross-validation metrics.
+- **Experiment persistence.** Long exploratory runs needed text, database, HTTP, and serialized learner paths so results were not lost when the process ended.
+- **Archival code status.** The repository reflects 2014 to 2016 research code, including hardcoded paths, stubs, Python 2 era conventions, and exposed local configuration values rather than a current production package.
 
 ## The Design
 
-The project models an image-processing pipeline as DNA. A solution is encoded as an ordered list of transforms and parameters, then evaluated by applying that pipeline across a training image set, extracting features, and scoring a scikit-learn classifier. The best candidates are then mutated, re-scored, and retained through an evolutionary search loop.
+<Mermaid
+  title="High-level system design"
+  direction="TD"
+  chart={`
+flowchart TD
+  Images@{ icon: "igcse:file-document", form: "square", label: "Labelled image set", pos: "b" }
+  Helper@{ icon: "igcse:filter", form: "square", label: "ImageSetHelper preprocessing", pos: "b" }
+  DNA@{ icon: "igcse:fingerprint", form: "square", label: "DNA pipeline candidate", pos: "b" }
+  Registry@{ icon: "igcse:database", form: "square", label: "Transform registry and parameter bounds", pos: "b" }
+  Transforms@{ icon: "igcse:crop", form: "square", label: "Concrete transform sequence", pos: "b" }
+  Classifier@{ icon: "igcse:target", form: "square", label: "Classifier cross-validation", pos: "b" }
+  Score@{ icon: "igcse:shield-check", form: "square", label: "Accuracy, F1, precision, recall, MCC", pos: "b" }
+  Optimizer@{ icon: "igcse:embedding", form: "square", label: "AISSA mutation and replacement", pos: "b" }
+  Evidence@{ icon: "igcse:file-document", form: "square", label: "Files, database rows, learner artifacts", pos: "b" }
 
-The main optimization path combines Artificial Immune System ideas with simulated annealing. The `AISSA` implementation creates and scores a population of candidate pipelines, sorts candidates by fitness, applies rank-influenced mutation, and uses simulated annealing as part of replacement decisions. The wider optimizer folder also includes implementations or scaffolding for genetic algorithms, particle swarm optimization, ant colony optimization, artificial bee colony optimization, and genetic programming.
+  Images --> Helper
+  DNA --> Registry
+  Registry --> Transforms
+  Helper --> Transforms
+  Transforms --> Classifier
+  Classifier --> Score
+  Score --> Optimizer
+  Optimizer --> DNA
+  Score --> Evidence
+` }
+/>
 
-### Transform Registry
+The system is arranged around a durable boundary: the encoded pipeline. The `DNA` object stores a list of tuples, where each tuple identifies a transform and the parameter values required by that transform. That representation is the common form used by the optimizer, the transform builder, persistence, detection scripts, and exported learner filenames.
 
-The transform layer wraps a large set of image-processing operations behind a registry-style architecture. The repository includes 56 transform classes spanning blurs, edge detectors, corner detection, HOG, local binary patterns, Gabor filters, morphology, thresholding, rank filters, and exposure adjustments. This made the search space broad enough to test many feature-engineering paths without hard-coding one fixed pipeline.
+The transform registry is the system's catalogue of possible operations. `TransformBase` maps a transform name to a constructor and to its parameter boundaries. It includes operations such as Gaussian and median blur, Canny, Sobel, Scharr, Roberts, Prewitt, Harris and FAST corners, HOG, local binary patterns, Gabor filters, histogram and exposure operations, Otsu and thresholding, rank filters, dilation, erosion, opening, skeletonization, white tophat, and black tophat. The framework is therefore not searching over one feature type; it is searching over families of operations that affect the image in different ways.
 
-### Evaluation And Artifacts
+The DNA is materialized by `ImageCell`. Given a DNA list and the transform registry, it retrieves each constructor, reads the transform structure, creates the transform object with the selected parameters, and returns the ordered transform sequence. This provides the link between an abstract candidate and a runnable image-processing pipeline.
 
-Evaluation was built around scikit-learn classifiers and repeatable experiment output. The framework records metrics such as accuracy, F1, precision, recall, and Matthews correlation, uses joblib to parallelize image processing across the image set, and can persist results through flat files, MySQL-backed records, or HTTP posting. The repository also contains 33 serialized `.pkl` learner artifacts from previous runs.
+<Mermaid
+  title="Candidate evaluation loop"
+  direction="TD"
+  chart={`
+flowchart TD
+  Candidate@{ icon: "igcse:fingerprint", form: "square", label: "Candidate DNA", pos: "b" }
+  Build@{ icon: "igcse:terminal", form: "square", label: "Build transform objects", pos: "b" }
+  Apply@{ icon: "igcse:filter", form: "square", label: "Apply transforms to each image", pos: "b" }
+  Clean@{ icon: "igcse:shield-check", form: "square", label: "Cleanse, normalize, flatten", pos: "b" }
+  CV@{ icon: "igcse:target", form: "square", label: "Stratified cross-validation", pos: "b" }
+  Persist@{ icon: "igcse:file-document", form: "square", label: "Persist score and DNA", pos: "b" }
+  Mutate@{ icon: "igcse:embedding", form: "square", label: "Mutate parameters, order, add, remove", pos: "b" }
+  Replace{"Replace original?"}
 
-The project is intentionally archival: it reflects experimental research code from 2014 to 2016 rather than a production package. As a portfolio project, it shows early hands-on work with computer vision, automated feature engineering, evolutionary algorithms, experiment tracking, and the engineering tradeoffs involved in turning a search idea into a runnable framework.
+  Candidate --> Build --> Apply --> Clean --> CV --> Persist
+  CV --> Mutate --> Replace
+  Replace -- "yes" --> Candidate
+  Replace -- "no" --> Mutate
+` }
+/>
 
-The source is being prepared for public GitHub release. Once it is public, this project page can link directly to the repository from the project card.
+Image handling is delegated to `ImageSetHelper`. It reads class-labelled image folders, builds positive and negative sets around the target label, converts images to grayscale, resizes them, and generates classifier outputs. When a candidate is evaluated, it applies the transform sequence to the processed image set with joblib parallelism, cleanses infinities and NaN values, rescales intensity, converts to `float32`, flattens the image arrays, and returns the classifier input matrix.
+
+The main optimizer path is `AISSA`, a hybrid Artificial Immune System plus Simulated Annealing implementation. A run begins by creating a population of candidate DNA sequences within the configured minimum and maximum pipeline length. Each candidate is scored only when its fitness is unknown. Scoring uses stratified k-fold cross-validation and records accuracy, F1, precision, recall, and Matthews correlation before averaging the combined score vector into a fitness value.
+
+Mutation operates at several levels. Parameter mutation uses Gaussian perturbation within the bounds declared by the transform registry. Structural mutation can swap transform order, add a newly generated transform, or remove an existing transform. The mutation probability is influenced by rank, so the optimizer can apply different pressure across the sorted population. Simulated annealing then changes the tolerance for accepting mutated candidates, allowing the run to occasionally move through a worse local state when the temperature permits it.
+
+Persistence was treated as part of the experiment rather than an afterthought. Each scored solution stores the simulation id, fitness, DNA, target label, dataset counts, classifier name and configuration, population settings, generation, image dimensions, best and worst fold scores, and the full score vector. Depending on configuration, that evidence can be written to a MySQL table or to a timestamped flat file. Related scripts can export trained classifiers to `.pkl` files whose names carry the DNA and image size information, then load those learners later to run detection over images.
+
+The surrounding optimizer folder also includes implementations or scaffolding for genetic algorithms, particle swarm optimization, ant colony optimization, artificial bee colony optimization, and genetic programming. Not all of those paths are as complete as `AISSA`; their presence reflects the research purpose of the repository. The framework was a place to test how different metaheuristic ideas could be made to act on the same encoded pipeline representation.
+
+## Archival Status
+
+It must be noted that DarkBoxFramework is preserved as research code rather than presented as a current library. The repository contains duplicated script logic, compatibility assumptions from the Python 2 to Python 3 transition, hardcoded local paths, database configuration files, and experimental stubs. Those issues are part of the historical record of the project, not deployment guidance.
+
+As a portfolio project, its value is in the architecture of the experiment. It demonstrates how an object-recognition workflow can be decomposed into assets, how those assets can be represented for search, how candidate solutions can be evaluated against measurable classifier outcomes, and how results can be recorded so that a long-running exploration remains inspectable after the fact.

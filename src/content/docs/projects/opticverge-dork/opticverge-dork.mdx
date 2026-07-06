@@ -1,68 +1,155 @@
 ---
-title: 'Opticverge.Dork'
-description: 'A .NET knowledge orchestration platform and CLI for turning source files and personal documents into LLM-ready context, searchable knowledge records, and cited study-guide plans.'
+title: 'Dork'
+description: 'Data ORchestration & Knowledge (DORK), A .NET CLI for traversing repositories, applying Git-aware contributor and file filters, and producing Markdown context packs for downstream LLM analysis.'
 category: 'projects'
-tags: ['C#', '.NET 10', 'ASP.NET Core', 'Aspire', 'EF Core', 'PostgreSQL', 'pgvector', 'OpenTelemetry', 'Python', 'pypdf']
+tags:
+  [
+    'C#',
+    '.NET 10',
+    'CLI',
+    'LibGit2Sharp',
+    'Git Metadata',
+    'Repository Analysis',
+    'File Traversal',
+    'Markdown',
+    'ReverseMarkdown',
+    'Parallel Processing',
+    'LLM Context',
+    'Context Engineering',
+    'Claude Code',
+    'OpenAI Codex',
+    'Github Copilot',
+    'Strategy Pattern',
+    'Builder Pattern',
+    'Facade Pattern',
+    'Command Pattern'
+  ]
 order: 3
+aiAssisted: true
+reviewed: true
 role: 'Author'
 dates: '2026 - present'
-roleSummary: 'I designed and built the CLI, Clean Architecture solution, local Aspire topology, ingestion worker, parser service, search API, and study-guide planner.'
+roleSummary: 'I designed and built the current DORK CLI: the repository traversal, Git log integration, contributor filtering, file filters, sorting rules, HTML-to-Markdown conversion, and context-pack output format.'
 metrics:
-  - '10-project Clean Architecture solution with API, worker, parser, Aspire host, CLI, and tests'
-  - '12 public /v1 API endpoints for sources, ingestion, documents, search, study guides, and system profile'
-  - '6-stage durable ingestion pipeline from fingerprinting to PostgreSQL FTS and embedding rows'
+  - 'Traverses repositories recursively with configurable include globs, excluded directories, excluded extensions, and path-substring ignore rules'
+  - 'Uses LibGit2Sharp to inspect per-file Git history, filter by contributor name, optionally include or remove merge commits, and attach author/date metadata to each output section'
+  - 'Processes files in parallel with configurable max parallelism and writes one Markdown context pack for LLM consumption'
+  - 'Defaults to local operation: source directory comes from the positional argument, --source-dir, DORK_SOURCE_DIRECTORY, or the current working directory'
 decisions:
-  - title: 'Grow the CLI into a platform'
-    detail: 'The original context-packaging CLI became the front door to a larger ingest, parse, index, search, and study-guide system instead of a separate throwaway tool.'
-    tradeoff: 'The project carries both command-line ergonomics and service architecture concerns.'
-  - title: 'Keep PostgreSQL canonical'
-    detail: 'PostgreSQL owns relational state, JSON metadata, full-text rows, and pgvector embeddings while OpenSearch and Qdrant stay modeled as opt-in future resources.'
-    tradeoff: 'The first version gives up specialized search infrastructure for a simpler local operating model.'
-  - title: 'Make ingestion durable and staged'
-    detail: 'The worker claims jobs from PostgreSQL and processes fingerprinting, metadata extraction, parsing, sectioning, enrichment, and persistence as idempotent stages.'
-    tradeoff: 'More state transitions to design, but failed work can resume at a clear boundary.'
-  - title: 'Put parsers behind a service boundary'
-    detail: 'A Python parser service and .NET fallback parser sit behind the same application abstraction, so richer parsing can be swapped without changing ingestion orchestration.'
-    tradeoff: 'A local HTTP hop appears in the developer topology.'
+  - title: 'Concentrate on repository evidence first'
+    detail: 'The completed iteration treats source files and Git history as the first useful data collection surface for LLM preparation. It walks a repository, decides which files are relevant, and packages them into one reviewable Markdown document.'
+    tradeoff: 'The wider ingestion, Aspire, API, parser, and study-guide ideas remain design exploration rather than the claim of this project page.'
+  - title: 'Use Git history as a filter, not just decoration'
+    detail: 'Contributor names are read from each file history and used to decide whether a file belongs in the pack. The same lookup supplies the date and author details used in each Markdown section header.'
+    tradeoff: 'Filtering depends on the repository having discoverable Git history and author names that match the supplied substring filters.'
+  - title: 'Keep the output intentionally plain'
+    detail: 'The CLI emits a single Markdown file with repeated file sections, optional Git metadata in the heading, stripped single-line comments, and converted HTML where applicable.'
+    tradeoff: 'The output is easy to inspect and paste into LLM workflows, but it does not yet preserve a structured manifest alongside the Markdown pack.'
+  - title: 'Make selection configurable at the command line'
+    detail: 'The tool accepts contributor filters, include globs, excluded directories, excluded extensions, ignore patterns, merge-commit behavior, sorting behavior, parallelism, and output path as flags.'
+    tradeoff: 'The user must be deliberate about the pack they ask for; the tool does not yet infer the ideal context boundary automatically.'
 outcome:
-  - 'Repository files and personal documents can be packaged, ingested, parsed, indexed, searched, and used as cited study-guide sources.'
-  - 'The local topology runs through Aspire with API, worker, PostgreSQL with pgvector, Apache Tika, and a Dockerfile-built Python parser service.'
-  - 'Architecture and maintainability are guarded by layer tests, persistence convention tests, and analyzer thresholds.'
-lessons: 'A personal knowledge system becomes easier to extend when the ingestion boundary is explicit. The useful pattern is to keep every stage idempotent, keep one canonical store until a specialist is truly needed, and make parser richness an implementation detail rather than an application contract.'
+  - 'DORK can take a repository and produce a focused Markdown context pack containing the files that match the requested file and contributor filters.'
+  - 'The output is ordered and annotated with Git-derived date and author evidence when metadata lookup is enabled.'
+  - 'The current implementation provides the collection and preparation boundary for later Data ORchestration & Knowledge work without presenting unfinished platform services as complete.'
+lessons: 'The first useful safeguard in an LLM knowledge tool is not a database or a service topology. It is a reliable boundary around what evidence is being collected, why it was selected, and who last shaped it. DORK showed that repository traversal becomes materially more useful when it is combined with Git log evidence, because the context pack can be narrowed to the files and contributors that matter for the question being asked.'
 ---
 
 ## Context
 
-Opticverge.Dork started as a CLI for packaging repository context for LLMs, then grew into a local knowledge orchestration platform for personal document collections. The CLI scans a codebase, enriches files with Git metadata, filters by contributor and extension, strips noise such as C# single-line comments, converts HTML to Markdown, and writes a single Markdown context file for downstream model work.
+DORK stands for Data ORchestration & Knowledge. The long-term intention is a toolset that can collect different forms of data and prepare them for consumption by large language models. In the present iteration, however, the completed asset is narrower and more concrete: a .NET command-line tool that traverses a repository and produces an LLM-ready Markdown context pack.
+
+This distinction is important. The repository contains early platform work around Aspire, API services, ingestion workers, parser services, and search-oriented design. Those elements indicate the direction of travel, but the current article focuses on the part that has been taken far enough to describe as working software: the repository scanner and Git-aware packager.
+
+The CLI is intended for a common development problem. A codebase contains the evidence needed to answer a technical question, but the relevant evidence is distributed across many files, generated folders, old commits, and contributor histories. If that material is handed to an LLM without selection, the model receives noise. If it is selected manually, the result depends on memory and guesswork. DORK is the first pass at making that selection more controlled.
 
 ## The Problem
 
-The first CLI solved one narrow task: make a codebase easier to hand to an LLM. The broader need was to ingest mixed local knowledge sources, parse them into searchable records, preserve citations, and plan study guides from retrieved evidence without losing the simplicity that made the CLI useful.
+The key to preparing repository data for model consumption is not simply to concatenate files. A useful context pack needs to identify which files are relevant, remove low-value areas of the tree, include enough provenance to explain why a file appears, and keep the final output readable by both a person and a model.
+
+There are several vulnerabilities in an unmanaged repository export. Build folders, dependency folders, binary assets, screenshots, and generated outputs can dominate the pack while adding little evidence. Files that have no relationship to the contributor or change area under review can distract from the question. HTML can be awkward to read in raw form. Git history may contain the only practical signal that a file belongs to a particular developer, feature, or line of investigation.
+
+DORK therefore treats the repository as the asset under assessment and Git history as one of the controls used to reduce irrelevant material. The current implementation does not attempt to solve all knowledge ingestion. It solves the first collection step: traverse the tree, apply explicit filters, read the relevant history, and write a coherent Markdown artifact.
 
 ## Constraints
 
-- **Local-first operation.** The platform needed to run as a developer-local topology, not depend on managed services for the first usable version.
-- **Layer discipline.** Domain, application, infrastructure, API, worker, parser, CLI, and test concerns needed clear ownership.
-- **Parser variability.** Rich parsing should be available when Python dependencies are present, with a fallback path when they are not.
-- **Search evolution.** The design needed room for OpenSearch or Qdrant later while keeping PostgreSQL canonical now.
-- **Maintainability gates.** Architecture tests and analyzer thresholds needed to prevent the system from collapsing into one large ingestion script.
+- **Repository scale.** A useful scan has to traverse a whole tree while avoiding obvious noise such as `bin`, `obj`, `node_modules`, IDE folders, packages, and image extensions.
+- **Contributor relevance.** The pack should be able to focus on files touched by one or more contributors rather than every file in the repository.
+- **Git availability.** Metadata lookup should enrich the output when a repository can be discovered, but the CLI must continue to operate when Git metadata is disabled or unavailable.
+- **Selection clarity.** Include globs, excluded directories, excluded extensions, ignore patterns, and merge-commit behavior need to be explicit command-line inputs.
+- **Readable output.** The result should be one Markdown file that can be reviewed before being handed to an LLM.
+- **Content cleanup.** The output needs light preparation, including stripping C#-style single-line comments and converting HTML or HTM files to Markdown.
+- **Local operation.** The tool should work from a positional source path, a `--source-dir` flag, the `DORK_SOURCE_DIRECTORY` environment variable, or the current working directory.
 
 ## The Design
 
-The platform layer takes the original CLI idea further: ingest, parse, index, search, and plan study guides over local knowledge sources. The solution follows Clean Architecture and Domain-Driven Design, with separate Domain, Application, Infrastructure, API, worker, parser, Aspire, service-defaults, CLI, and test projects.
+<Mermaid
+  title="High-level design"
+  direction="TD"
+  layout="dagre"
+  chart={`
+flowchart TD
+  Repo@{ icon: "igcse:database", form: "square", label: "Source repository", pos: "b" }
+  Config@{ icon: "igcse:filter", form: "square", label: "CLI configuration", pos: "b" }
+  Cli@{ icon: "igcse:terminal", form: "square", label: "DORK CLI", pos: "b" }
+  Traverse@{ icon: "igcse:text-box-search", form: "square", label: "Traverse repository files", pos: "b" }
+  FileRules@{ icon: "igcse:filter", form: "square", label: "Apply include and exclude rules", pos: "b" }
+  Git@{ icon: "igcse:fingerprint", form: "square", label: "Read per-file Git history", pos: "b" }
+  Contributors@{ icon: "igcse:text-search", form: "square", label: "Apply contributor filters", pos: "b" }
+  Prepare@{ icon: "igcse:file-document", form: "square", label: "Clean and convert content", pos: "b" }
+  Sort@{ icon: "igcse:filter", form: "square", label: "Sort accepted files", pos: "b" }
+  Pack@{ icon: "igcse:file-document", form: "square", label: "Markdown context pack", pos: "b" }
 
-The local Aspire topology runs an ASP.NET Core API, an ingestion worker, PostgreSQL with pgvector, Apache Tika, and a Dockerfile-built Python parser service. OpenSearch and Qdrant are modeled as opt-in future resources, while the v1 write path keeps PostgreSQL as the canonical relational, JSON metadata, full-text search, and vector store.
+  Repo --> Cli
+  Config --> Cli
+  Cli --> Traverse
+  Traverse --> FileRules
+  FileRules --> Git
+  Git --> Contributors
+  Contributors --> Prepare
+  Prepare --> Sort
+  Sort --> Pack
+` }
+/>
 
-### Durable Ingestion
+The CLI starts by resolving its operating boundary. `DorkOptions` accepts either a positional source directory or `--source-dir`; if neither is supplied, it falls back to `DORK_SOURCE_DIRECTORY` and then the current working directory. The same options object records include globs, excluded directories, excluded extensions, ignored path substrings, merge-commit handling, Git metadata behavior, date sorting, output path, and maximum parallelism.
 
-The ingestion worker claims durable jobs from PostgreSQL and processes them idempotently. Its six stages fingerprint the source, extract metadata, extract page text and artifacts, map pages into useful sections while suppressing low-value pages, generate tags and concepts, and persist canonical records, FTS rows, and embeddings.
+Once the boundary is declared, `SourceFileProcessor` enumerates the repository recursively. It begins from the include globs, then removes files whose paths contain excluded directory patterns, whose extensions match excluded extensions, or whose paths contain ignored substrings. The defaults are deliberately defensive for repository scans: build outputs, IDE metadata, test folders, package folders, dependency folders, and PNG assets are excluded unless the user changes the selection.
 
-The Python parser service exposes `/health` and `/parse`, uses `pypdf` when available, emits parse manifests, page artifacts, page classifications, sections, and keyword-style tags, and falls back to text extraction when a richer parser is unavailable. A .NET fallback parser client sits behind the same application abstraction.
+Git metadata is the next control. When enabled, the tool discovers the repository with LibGit2Sharp and queries the history for each selected file path. `GitMetadataReader` can include or exclude merge commits, then applies contributor filters by matching supplied names against commit author names. If a contributor filter is active and no relevant history remains for a file, that file is removed from the final pack. If relevant history exists, the oldest relevant commit in the filtered history supplies the date and author details used in the section header.
 
-### Search And Study Guides
+{/*
+<Mermaid
+  title="Contributor-aware selection"
+  direction="TD"
+  layout="dagre"
+  chart={`
+flowchart TD
+  File@{ icon: "igcse:file-document", form: "square", label: "Candidate file", pos: "b" }
+  History@{ icon: "igcse:fingerprint", form: "square", label: "Per-file Git history", pos: "b" }
+  Merge@{ icon: "igcse:filter", form: "square", label: "Apply merge-commit setting", pos: "b" }
+  Author@{ icon: "igcse:text-search", form: "square", label: "Match contributor filters", pos: "b" }
+  Evidence{"Relevant history exists?"}
+  Header@{ icon: "igcse:file-document", form: "square", label: "Filename, date, authors", pos: "b" }
+  Output@{ icon: "igcse:file-document", form: "square", label: "Include section in context pack", pos: "b" }
 
-Search is exposed through `/v1/search` and currently ranks PostgreSQL-backed chunk candidates with lexical rank, tag overlap, and section quality. The study-guide planner uses search results to build objective-oriented sections with query variants, page-selection rules, and candidate cited sources, then persists the plan for later retrieval.
+  File --> History --> Merge --> Author --> Evidence
+  Evidence -- "yes" --> Header --> Output
+  Evidence -- "no" --> Omit@{ icon: "igcse:filter", form: "square", label: "Omit file", pos: "b" }
+` }
+/>
+*/}
 
-The project also treats architecture and maintainability as first-class constraints. ArchUnitNET tests enforce layer isolation, infrastructure convention tests keep persistence ownership disciplined, and analyzer gates enforce thresholds for cyclomatic complexity, cognitive complexity, method size, file length, nesting depth, parameter count, and related maintainability metrics.
+File processing runs in parallel through `Parallel.ForEachAsync`, with the default maximum parallelism set to twice the processor count. Each accepted file is represented as `FileProcessingInfo`: the file path, optional Git creation date, author list, contributor signatures, and a flag indicating whether the contributor filter was satisfied. This keeps traversal, metadata collection, filtering, and writing as separate stages rather than collapsing the whole process into one loop.
 
-The source is being prepared for public GitHub release. Once it is public, this project page can link directly to the repository from the project card.
+The output stage is intentionally plain. Before writing a file, the processor removes lines that begin with `//` after leading whitespace. If the file is HTML or HTM, ReverseMarkdown converts it to Markdown. Each file is then appended under a heading in the form:
+
+```markdown
+### filename - dd/MM/yyyy - Authors: author name
+
+file contents
+```
+
+When date sorting is enabled, files are ordered by Git-derived creation date descending and then by filename. The final artifact is a single Markdown file, written either to the configured `--output` path or to `{source-directory-name}-output.md` in the scanned directory.
+
+The larger repository still contains architecture for future knowledge orchestration: API endpoints, ingestion worker concepts, parser services, Aspire hosting, persistence, and search. Those areas are not the current claim of DORK. They are the longer-term action plan. The present safeguard is the CLI boundary: select repository evidence with explicit rules, attach Git provenance where possible, and produce a context pack that can be inspected before it is used by an LLM.

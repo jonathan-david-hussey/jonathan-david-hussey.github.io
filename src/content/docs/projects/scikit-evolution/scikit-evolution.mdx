@@ -1,68 +1,173 @@
 ---
-title: 'scikit-evolution'
-description: 'A Python evolutionary hyperparameter optimization framework for scikit-learn-style estimators, using Artificial Immune System search over model families, parameter spaces, and cross-validation scores.'
+title: 'Scikit Evolution'
+description: 'A Python evolutionary model-search framework that treats scikit-learn-style estimator configuration as an optimizable asset, using shell learners, typed hyperparameters, cross-validation scoring, and Artificial Immune System mutation.'
 category: 'projects'
-tags: ['Python', 'scikit-learn', 'NumPy', 'TensorFlow', 'skflow', 'lightning', 'MySQL', 'Evolutionary Algorithms']
+tags:
+  [
+    'Python',
+    'Machine Learning',
+    'AutoML',
+    'scikit-learn',
+    'NumPy',
+    'TensorFlow',
+    'skflow',
+    'lightning',
+    'MySQL',
+    'Evolutionary Algorithms',
+    'Artificial Immune System',
+    'Hyperparameter Optimization',
+    'Model Selection',
+    'Cross Validation',
+    'Regression',
+    'Classification',
+    'Clustering',
+    'Experiment Tracking',
+    'Strategy Pattern',
+    'Builder Pattern',
+    'Template Method Pattern',
+    'Factory Pattern',
+  ]
+reviewed: true
 order: 6
 role: 'Author'
 dates: '2016'
-roleSummary: 'I built the shell learner abstraction, typed hyperparameter system, Artificial Immune System optimizer, experiment infrastructure, persistence paths, and analysis artifacts.'
+roleSummary: 'I built the shell learner abstraction, typed hyperparameter system, randomization and mutation paths, Artificial Immune System optimizer, experiment scripts, persistence layer, SQL analysis helpers, and archived run artifacts.'
 metrics:
   - '87 learner shell classes across regression, classification, and clustering model families'
-  - '15 parameter enum types for bounded, categorical, gaussian, dynamic, constrained, and unconstrained hyperparameters'
-  - '139 run-output files and 51 analysis artifacts from evolutionary model-search experiments'
+  - '15 parameter enum types for bounded, categorical, gaussian, dynamic, constrained, unconstrained, kernel, boolean, array, map, and mixed hyperparameters'
+  - '8 optimizer modules or scaffolds, including Artificial Immune System, hill climbing, random search, genetic algorithms, simulated annealing, particle swarm optimization, tabu search, and evolution strategies'
+  - '140 text run-output artifacts, 50 top-level analysis artifacts, 9 SQL scripts, and 19 unittest files preserved in the repository'
 decisions:
-  - title: 'Shell learners wrap heterogeneous estimators'
-    detail: 'Each supported estimator is adapted into a common shell so optimizers can search across model families instead of a single algorithm.'
-    tradeoff: 'Wrapping many libraries creates maintenance work around inconsistent estimator behavior.'
-  - title: 'Typed hyperparameters drive mutation'
-    detail: 'The `EParameter` vocabulary gives integer, real, categorical, gaussian, constrained, unconstrained, and kernel settings shared randomization and mutation rules.'
-    tradeoff: 'A richer parameter model is more complex than simple grid definitions.'
-  - title: 'AIS as the primary search path'
-    detail: 'The main optimizer creates candidate shell learner solutions, scores them with cross-validation, mutates them with rank-influenced intensity, and keeps strong candidates across generations.'
-    tradeoff: 'Evolutionary search is slower and less predictable than direct model tuning.'
-  - title: 'Preserve experiment outputs'
-    detail: 'Run outputs, analysis artifacts, SQL scripts, and tests capture the state of real experiments rather than only the framework code.'
-    tradeoff: 'The repository is heavier, but the portfolio page can point to concrete evidence of use.'
+  - title: 'Represent a learner as a searchable shell'
+    detail: 'Each candidate solution wraps a shell learner class plus its generated keyword arguments and fitness score, allowing the optimizer to search model families rather than tune one estimator in isolation.'
+    tradeoff: 'This normalizes estimator behavior across libraries, but every supported model needs a maintained shell that understands its constructor, parameter space, and dependencies.'
+  - title: 'Make hyperparameters typed objects'
+    detail: 'The parameter layer describes booleans, categories, bounded values, gaussian values, dynamic arrays, and unconstrained values as objects that randomization and mutation can inspect.'
+    tradeoff: 'The vocabulary is more complex than a plain grid, but it lets evolutionary search mutate heterogeneous model settings through one mechanism.'
+  - title: 'Use cross-validation as the fitness boundary'
+    detail: 'Each shell creates a concrete estimator and is scored with scikit-learn cross-validation over the configured data helper, scoring function, and fold count.'
+    tradeoff: 'Fitness reflects actual model behavior on the task, but every generation inherits the cost and fragility of real estimator training.'
+  - title: 'Preserve experiment evidence'
+    detail: 'The optimizer writes learner name, arguments, fitness, fold scores, problem metadata, normalizer, data source, searcher, and simulation settings to MySQL or a file fallback.'
+    tradeoff: 'The repository carries more experimental output and persistence code, but the search results remain inspectable after long runs.'
 outcome:
-  - 'The framework can search model families and hyperparameter spaces across regression, classification, and clustering experiments.'
-  - 'Experiment records include 139 run-output files, 51 analysis artifacts, and SQL scripts for querying best learners and simulation results.'
-  - 'The project demonstrates early hands-on work with AutoML-style search, model abstraction, and evolutionary optimization.'
-lessons: 'AutoML-style systems need two abstractions to be useful: a model wrapper that normalizes estimator behavior and a parameter vocabulary that mutation can understand. The archival lesson is that search machinery is only persuasive when experiment outputs survive beside the code.'
+  - 'The framework could compare learner families and hyperparameter spaces through one optimizer-facing contract instead of a set of unrelated manual scripts.'
+  - 'The preserved outputs, SQL helpers, analysis images, and tests provide evidence of real AutoML-style experiments rather than only framework scaffolding.'
+  - 'The project demonstrates early hands-on work with model abstraction, evolutionary optimization, typed hyperparameter mutation, and experiment traceability.'
+lessons: 'scikit-evolution made clear that model search depends on representation before it depends on search strategy. A useful optimizer needs to know what a learner is, which parameters may move, how dependencies constrain those parameters, how fitness is measured, and how the result will be recovered after the run has finished.'
 ---
 
 ## Context
 
-scikit-evolution is a Python framework for treating machine-learning model configuration as an optimization problem. It wraps scikit-learn-style estimators in "shell learner" adapters, defines their searchable hyperparameter spaces, and uses evolutionary search to discover model and parameter combinations that perform well on a given dataset.
+scikit-evolution is an archival Python framework for evolutionary machine-learning model search. Its core activity was to treat estimator configuration as an asset that could be represented, evaluated, mutated, and recorded. The main assets in the system are the shell learner abstraction, the parameter vocabulary, the data helper, the optimizer population, the cross-validation score, and the experiment evidence produced by each run.
+
+The project was written during a period when model selection across scikit-learn, TensorFlow `skflow`, lightning, and related libraries required a great deal of manual coordination. Each estimator exposed different constructor arguments, default behavior, constraints, scoring characteristics, and training costs. Comparing them fairly meant more than selecting a different class name; it required a repeatable way to construct, score, and mutate each candidate.
+
+scikit-evolution turned that process into a search system. A candidate is a `ShellLearnerSolution`: a shell learner instance, its generated keyword arguments, and its fitness. The optimizer creates a population of these candidates, scores them through cross-validation, mutates their parameter values, replaces weaker configurations, and persists the result for later inspection.
 
 ## The Problem
 
-Trying many model families by hand is repetitive and inconsistent. Each estimator exposes different parameters, defaults, constraints, and scoring behavior. This project explored whether a shared learner abstraction and evolutionary search loop could make cross-family model selection more systematic.
+Manual model selection is vulnerable to inconsistency. A practitioner may try a random forest, then an SVM, then a neural network, but each experiment may use different preprocessing, different validation settings, different parameter ranges, or no durable record of the failed configurations. This makes it difficult to determine whether the best model was genuinely best, or simply the one that received the most attention.
+
+The required result was therefore a common contract for heterogeneous estimators. A regressor, classifier, or clusterer needed to be represented in the same way from the perspective of the optimizer. Its parameters had to be generated and mutated through known rules, its dependencies had to be respected before construction, and its score had to be produced through the same validation boundary as the rest of the population.
+
+The project also had to answer a practical question: when an evolutionary search finishes, what evidence remains? Without persisted arguments, scores, learner names, dataset metadata, and analysis queries, the search would produce a temporary answer rather than a reusable experiment.
 
 ## Constraints
 
-- **Estimator variety.** Linear models, trees, ensembles, SVMs, nearest-neighbour methods, neural networks, Gaussian processes, TensorFlow/skflow wrappers, and lightning wrappers all behave differently.
-- **Parameter shape.** Search needs to mutate integers, floats, strings, booleans, arrays, maps, bounded values, constrained values, and kernels through one vocabulary.
-- **Evaluation cost.** Candidate models are scored through cross-validation, so every generation has a real runtime cost.
-- **Experiment traceability.** Search results, SQL queries, output files, tests, and analysis artifacts need to survive beyond the run.
-- **Archival dependencies.** The project reflects the ML library landscape and research code style of 2016.
+- **Estimator variety.** Linear models, trees, ensembles, SVMs, nearest-neighbour methods, neural networks, Gaussian processes, kernel ridge models, naive Bayes, TensorFlow/skflow wrappers, lightning wrappers, and clustering shells behave differently.
+- **Parameter shape.** Search has to handle integers, floats, booleans, categories, arrays, maps, bounded values, unconstrained values, gaussian values, and dynamic arrays through one mutation vocabulary.
+- **Parameter dependencies.** Some model settings constrain others, such as `oob_score` depending on `bootstrap`, so valid construction requires dependency-aware argument generation.
+- **Evaluation cost.** Every candidate is scored through real estimator training and cross-validation, which makes runtime, timeouts, and failed configurations part of the system design.
+- **Experiment traceability.** Results need to preserve learner name, arguments, score, dataset size, normalizer, scorer, folds, problem type, and search settings.
+- **Archival dependency landscape.** The repository reflects the Python ML ecosystem and research-code style of 2016, including deprecated library APIs and experimental wrappers.
 
 ## The Design
 
-The main search path is an Artificial Immune System optimizer. It creates a population of candidate `ShellLearnerSolution` objects, scores each candidate with scikit-learn `cross_val_score`, sorts by fitness, mutates candidates with rank-influenced intensity, avoids duplicate configurations, and keeps the best-performing candidates across generations. The optimizer layer also includes hill climbing, random search, and modules for genetic algorithms, simulated annealing, particle swarm optimization, tabu search, and evolution strategies.
+<Mermaid
+  title="High Level Design"
+  direction="TD"
+  chart={`
+flowchart TD
+  Problem@{ icon: "igcse:file-document", form: "square", label: "Problem script and dataset", pos: "b" }
+  Data@{ icon: "igcse:filter", form: "square", label: "DataHelper and normalizer", pos: "b" }
+  Pool@{ icon: "igcse:database", form: "square", label: "Learner helper selection pool", pos: "b" }
+  Solution@{ icon: "igcse:fingerprint", form: "square", label: "ShellLearnerSolution", pos: "b" }
+  Params@{ icon: "igcse:filter", form: "square", label: "Typed parameter randomization", pos: "b" }
+  Learner@{ icon: "igcse:terminal", form: "square", label: "Concrete estimator", pos: "b" }
+  Score@{ icon: "igcse:target", form: "square", label: "Cross-validation fitness", pos: "b" }
+  Search@{ icon: "igcse:embedding", form: "square", label: "AIS mutation and replacement", pos: "b" }
+  Evidence@{ icon: "igcse:file-document", form: "square", label: "Files, MySQL rows, analysis artifacts", pos: "b" }
 
-The learner abstraction is the core of the project. The repository contains 87 learner shell classes across regression, classification, and clustering model families, including linear models, trees, ensembles, SVMs, nearest-neighbour methods, neural networks, Gaussian processes, kernel ridge models, naive Bayes, TensorFlow/skflow wrappers, and lightning wrappers. Helpers group those learners by problem type and data-size suitability so experiments can search a selected pool rather than a single estimator.
+  Problem --> Data
+  Problem --> Pool
+  Pool --> Solution
+  Params --> Solution
+  Solution --> Learner
+  Data --> Score
+  Learner --> Score
+  Score --> Search
+  Search --> Solution
+  Score --> Evidence
+` }
+/>
 
-### Hyperparameter Vocabulary
+The system is organized around the shell learner. `ShellLearner` accepts an estimator constructor and a dictionary of typed parameters. On initialization it generates keyword arguments from the parameter objects, stores optional arguments such as `n_jobs`, and records dependency rules that must be applied before the estimator is built. Calling `get_learner` creates the concrete scikit-learn, skflow, or lightning estimator for evaluation.
 
-The hyperparameter system gives each shell a common vocabulary for randomization and mutation. The `EParameter` enum defines 15 parameter categories, including integer, real, string, boolean, array, map, category, bounded, mixed, dynamic, gaussian, Dirichlet, constrained, unconstrained, and kernel values. Bounds, movement rules, randomizers, and mutators sit behind that vocabulary so the optimizer can mutate very different model settings through one interface.
+`ShellLearnerSolution` is the optimizer-facing representation. It contains the shell learner, the current keyword arguments, the fitness, and the minimum and maximum fold scores. This representation is deliberately higher-level than a simple numeric chromosome. The search is not only moving numbers; it is moving model configuration.
 
-### Experiment Infrastructure
+Learner helpers define which shell classes are available for a problem. `RegressorHelper` and related helpers group estimators by family and by data-size suitability. The repository includes shell classes for ensembles, linear models, trees, support vector machines, nearest neighbours, neural networks, Gaussian processes, kernel ridge models, naive Bayes, lightning learners, TensorFlow/skflow learners, and a clustering shell. This allows a run to search a narrow custom pool, such as an MLP-only experiment, or a wider model-family pool.
 
-The framework also includes experiment infrastructure around the search loop. It supports custom scoring such as MAPE, regression and classification problem scripts, domain-specific normalizers for load-forecasting style work, MySQL query builders and schema scripts for persisted results, file-output fallbacks, and a timeout path for evaluations that might hang.
+<Mermaid
+  title="Artificial Immune System loop"
+  direction="TD"
+  chart={`
+flowchart TD
+  Create@{ icon: "igcse:database", form: "square", label: "Create population", pos: "b" }
+  ScoreAll@{ icon: "igcse:target", form: "square", label: "Score population", pos: "b" }
+  Sort@{ icon: "igcse:filter", form: "square", label: "Sort by objective", pos: "b" }
+  Mutate@{ icon: "igcse:embedding", form: "square", label: "Rank-based mutation", pos: "b" }
+  Clone@{ icon: "igcse:fingerprint", form: "square", label: "Clone candidate kwargs", pos: "b" }
+  Validate{"Duplicate or invalid?"}
+  Rescore@{ icon: "igcse:target", form: "square", label: "Score clone", pos: "b" }
+  Replace{"Clone improves parent?"}
+  Fresh@{ icon: "igcse:database", form: "square", label: "Replace bottom 10 percent", pos: "b" }
+  Best@{ icon: "igcse:shield-check", form: "square", label: "Return best solution", pos: "b" }
 
-The repository preserves evidence of real experimentation: 139 run-output files, 51 analysis artifacts, SQL scripts for querying best learners and simulation results, and 19 test files covering mutation, randomization, parameter bounds, metrics, classifiers, regressors, data handling, preprocessing, SQL queries, GPU paths, and database connectivity.
+  Create --> ScoreAll --> Sort --> Mutate --> Clone --> Validate
+  Validate -- "yes" --> Clone
+  Validate -- "no" --> Rescore --> Replace
+  Replace -- "yes" --> Sort
+  Replace -- "no" --> Sort
+  Sort --> Fresh --> ScoreAll
+  Sort --> Best
+` }
+/>
 
-The project is intentionally archival. As a portfolio project, it shows early hands-on work with AutoML-style search, model abstraction, hyperparameter typing, evolutionary algorithms, experiment persistence, and the practical messiness of making many heterogeneous machine-learning libraries behave through one optimizer-facing contract.
+The Artificial Immune System path owns the main lifecycle. `ArtificialImmuneSystemBase.navigate` creates the population, scores it, then repeats sorting, mutation, scoring, and replacement until the configured epoch count is reached. The concrete `ArtificialImmuneSystem` selects random shell learners from the helper pool, constructs `ShellLearnerSolution` objects, and scores each with `model_selection.cross_val_score` using the validation options supplied by the run.
 
-The source is being prepared for public GitHub release. Once it is public, this project page can link directly to the repository from the project card.
+Mutation is rank-aware. The search builds distributions for mutation probability, number of dimensions to change, and rate-of-change variance. Stronger and weaker solutions therefore receive different mutation pressure. A clone is produced by selecting parameters from the current keyword argument map, mutating the corresponding `Parameter` objects, applying dependency rules when needed, and rejecting configurations that are identical to the parent or already trained.
+
+## Parameter Vocabulary
+
+The parameter system is the part that makes cross-family search possible. `EParameter` defines 15 categories: integer, real, string, boolean, array, map, category, bounded, mixed, dynamic, gaussian, Dirichlet, constrained, unconstrained, and kernel. The concrete parameter classes then describe how those categories should be generated.
+
+A `BoundedParameter` carries a minimum and maximum value. An `UnconstrainedBoundedParameter` uses a starting range while allowing later movement beyond the original upper bound. A `CategoricalParameter` selects from a fixed list of options. A `BooleanParameter` handles binary flags. A `DynamicArrayParameter` can generate and mutate variable-length arrays, which is useful for neural-network layer definitions. A `GaussianParameter` has a pivot and step size for gaussian movement.
+
+Randomization and mutation sit behind the same vocabulary. `ParameterRandomiser` selects an initial value based on the parameter type, while `ParameterMutator` handles bounded movement, category replacement, boolean changes, and dynamic-array value, add, remove, and swap operations. This means that an optimizer can mutate `n_estimators`, `bootstrap`, `hidden_layer_sizes`, `kernel`, `learning_rate`, and solver choices without hand-writing a separate mutation rule for each estimator.
+
+The shell layer also manages dependency-sensitive configuration. For example, ensemble shells can constrain `oob_score` according to the current value of `bootstrap`, and bagging shells can constrain `warm_start` according to `oob_score`. These relationships are important because a search system that frequently constructs invalid estimators wastes generations on avoidable failures.
+
+## Experiment Evidence
+
+Scoring closes the loop. A solution is evaluated by asking its shell for a concrete learner, reading inputs and outputs from the data helper, and passing the estimator through cross-validation with the configured scoring function and fold count. The result is stored as average fitness plus minimum and maximum fold scores.
+
+Persistence is part of that score boundary. The optimizer records problem name, problem type, timestamp, fitness, learner arguments, input count, class count, learner name, population size, epoch count, generation, fold score bounds, normalizer, searcher name, data source, and validation options. If MySQL configuration is available, the result is inserted into the configured table; otherwise it is appended to a file. Separate SQL helpers can then query available input sizes, best evolved learners, and top configurations for a learner and scoring function.
+
+The repository also preserves the surrounding experimental material: problem scripts for classification and regression, custom metrics such as mean absolute percentage error, normalizers for time, temperature, and rate-of-change workflows, run outputs, analysis images, SQL scripts, and unittest files covering mutation, randomization, bounds, classifiers, regressors, preprocessing, SQL, GPU paths, metrics, verification, and database connectivity.
+
+## Archival Status
+
+It must be noted that scikit-evolution is preserved as research code rather than presented as a current package. The repository reflects 2016-era APIs, optional dependencies such as skflow and lightning, local database configuration, deprecated dataset references, and experimental modules that are not all equally complete.
+
+As a portfolio project, its value is in the architecture of the search system. It demonstrates how many heterogeneous machine-learning estimators can be decomposed into shell learners, typed parameters, candidate solutions, validation scores, and persisted evidence. The lasting pattern is the separation between representation, mutation, evaluation, and analysis.

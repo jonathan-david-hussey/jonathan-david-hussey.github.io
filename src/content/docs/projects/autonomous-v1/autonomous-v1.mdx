@@ -1,72 +1,184 @@
 ---
-title: 'Autonomous Vehicle Backend'
-description: 'A NestJS backend for autonomous vehicle coordination: MQTT telemetry intake, mission assignment, mission-status tracking, MongoDB persistence, Swagger-documented APIs, and a Dockerized simulation stack.'
+title: 'Autonomous'
+description: 'A NestJS coordination backend that combines protected HTTP APIs, MQTT vehicle messaging, MongoDB persistence, mission-status history, Swagger documentation, and a Dockerized EMQX simulation stack.'
 category: 'projects'
-tags: ['TypeScript', 'NestJS', 'MongoDB', 'TypeORM', 'MQTT', 'EMQX', 'Docker', 'Swagger', 'Jest', 'Python']
+tags:
+  [
+    'TypeScript',
+    'NestJS',
+    'Node.js',
+    'MongoDB',
+    'TypeORM',
+    'MQTT',
+    'EMQX',
+    'Docker',
+    'Docker Compose',
+    'Swagger',
+    'JWT',
+    'EventEmitter',
+    'Jest',
+    'Python',
+    'Claude',
+    'ChatGPT',
+    'Github Copilot',
+    'Observer Pattern',
+    'State Pattern',
+    'Adapter Pattern',
+    'Command Pattern',
+    'Repository Pattern'
+  ]
 order: 4
 role: 'Author'
 dates: '2025'
-roleSummary: 'I designed and built the NestJS API, MQTT listener flow, mission assignment lifecycle, MongoDB persistence model, Docker Compose topology, simulator, and tests.'
+aiAssisted: true
+reviewed: true
+roleSummary: 'I designed and built the NestJS API, MQTT listener and publisher flow, mission assignment lifecycle, MongoDB persistence model, Docker Compose topology, Python telemetry simulator, Postman collection, and Jest test coverage.'
 metrics:
-  - '4-service Docker Compose stack for EMQX, MongoDB, API, and telemetry simulation'
-  - '3 MQTT topic flows for telemetry, mission dispatch, and mission status updates'
-  - '13 spec and e2e test files covering services, listeners, and API behavior'
+  - '4-service local stack: EMQX, MongoDB, NestJS API, and Python telemetry sender'
+  - '3 MQTT topic families for telemetry intake, mission dispatch, and mission-status responses'
+  - '5 MongoDB-backed operational records: vehicles, missions, vehicle missions, mission statuses, and telemetry'
+  - '13 spec and e2e test files covering services, listeners, publisher behavior, and API flow'
 decisions:
-  - title: 'HTTP commands, MQTT operations'
-    detail: 'The API owns vehicle, mission, and assignment commands while MQTT carries telemetry, mission dispatch, and mission status responses.'
-    tradeoff: 'Two integration surfaces to document and test.'
-  - title: 'Internal event service between broker and domain'
-    detail: 'MQTT handlers route messages into an event service so broker topic concerns do not leak into mission and telemetry processing.'
-    tradeoff: 'One more indirection layer, but cleaner domain tests.'
-  - title: 'Status history instead of one mutable flag'
-    detail: 'Mission assignment records keep timestamped status entries from PENDING through QUEUED, IN_PROGRESS, COMPLETED, or FAILED.'
-    tradeoff: 'More records per mission, but report generation can explain how the mission progressed.'
-  - title: 'Dockerized simulation as the default runtime'
-    detail: 'EMQX, MongoDB, the API, and a Python telemetry sender start together so the system can be exercised locally without external infrastructure.'
-    tradeoff: 'Local orchestration adds setup files, but it makes the integration story concrete.'
+  - title: 'Separate operator commands from vehicle traffic'
+    detail: 'The backend uses protected HTTP endpoints for operator-facing vehicle, mission, assignment, telemetry, and report access, while MQTT carries field-oriented telemetry, mission delivery, and mission-status messages.'
+    tradeoff: 'The system has two integration surfaces to configure, secure, and test, but each communication style is used where it is strongest.'
+  - title: 'Route broker messages through typed application events'
+    detail: 'MQTT handlers translate topic payloads into internal event topics such as vehicle telemetry, vehicle mission, and vehicle mission status, keeping broker subscription concerns outside the domain services.'
+    tradeoff: 'There is an additional event layer to follow during debugging, but services and listeners can be tested without binding every case to MQTT transport details.'
+  - title: 'Record mission progress as status history'
+    detail: 'A vehicle-mission assignment creates an initial PENDING status, moves to QUEUED when the mission is published, then records IN_PROGRESS, COMPLETED, or FAILED responses as separate timestamped status entries.'
+    tradeoff: 'Reporting must compose several collections instead of reading one mutable flag, but the operational history remains visible after the final state changes.'
+  - title: 'Make the demonstration environment concrete'
+    detail: 'Docker Compose starts EMQX, MongoDB, the API, and a Python telemetry sender, while init scripts seed a sample vehicle and mission so the whole path can be exercised locally.'
+    tradeoff: 'The local demo requires broker credentials and environment setup, but reviewers can inspect the full message and persistence flow without hosted infrastructure.'
 outcome:
-  - 'Vehicles, missions, telemetry, assignments, mission status history, and mission reports are exposed through Swagger-documented APIs.'
-  - 'Telemetry and mission status messages flow through MQTT into validated MongoDB records.'
-  - 'The local stack can demonstrate the full path from simulated telemetry to mission assignment and status reporting.'
-lessons: 'Coordination systems are easier to reason about when command APIs, broker traffic, and domain events have crisp boundaries. The useful pattern is to keep every operational transition as a recorded event so reporting and debugging can reconstruct the mission lifecycle.'
+  - 'Operators can create and retrieve vehicles, create missions, assign missions to vehicles, inspect telemetry by vehicle, and request mission reports through Swagger-documented, JWT-guarded endpoints.'
+  - 'Vehicle telemetry is accepted over MQTT only when it belongs to a registered vehicle, then persisted as timestamped location and status records.'
+  - 'Mission assignments move through a visible lifecycle from HTTP request to queued MQTT dispatch, simulated vehicle execution, status response, and report output.'
+  - 'The repository includes a runnable local stack, seeded development data, a telemetry simulator, Postman requests, and service/listener tests that make the integration path reviewable.'
+lessons: 'Coordination systems are easier to secure and explain when the assets, channels, and transitions are named separately. HTTP should own administrative intent, MQTT should own vehicle communication, and every important operational transition should be persisted as evidence rather than overwritten as a final value.'
 ---
 
 ## Context
 
-The Autonomous Vehicle Backend is a NestJS system for coordinating autonomous vehicles through a mix of HTTP APIs, MQTT messaging, and MongoDB persistence. It manages vehicle records, mission definitions, vehicle-mission assignments, telemetry intake, mission status history, and JSON mission reports.
+Autonomous Vehicle Backend is a coordination system for a small fleet-style operating model. The assets under control are vehicles, missions, assignments, telemetry records, and mission status evidence. Each one has a different operational value: vehicles identify the field device, missions describe the intended work, assignments bind that work to a vehicle, telemetry reports where the vehicle is and what state it is in, and status entries explain how a mission progressed.
+
+The project is built as a NestJS backend with MongoDB persistence and EMQX-based MQTT messaging. It exposes a conventional API for operators, listens to vehicle-originated MQTT traffic, publishes mission instructions back to vehicle-specific topics, and provides JSON mission reports that combine the relevant records into an operational view.
+
+The repository also includes the supporting environment needed to demonstrate the system. Docker Compose starts the MQTT broker, MongoDB, the API, and a Python telemetry sender; Mongo initialization seeds a sample vehicle and mission; Swagger documents the HTTP surface; and the Postman collection gives reviewers a direct route through the main flows.
 
 ## The Problem
 
-Autonomous vehicle coordination needs both request/response management and asynchronous field communication. The backend had to expose a conventional API for operators while also accepting telemetry, dispatching missions, and recording mission status updates over MQTT.
+Autonomous vehicle coordination is not a single request-response problem. An operator can create a mission through an API, but a vehicle reports its telemetry asynchronously, may receive mission instructions through a broker, and returns mission progress later as a separate message. If these communications are treated as one flat data model, it becomes difficult to tell which asset was affected, which channel carried the update, and which transition actually occurred.
+
+The backend therefore had to manage two related risks. The first was operational ambiguity: a mission assignment should not vanish into a final status without showing when it was queued, when it started, and how it ended. The second was integration fragility: telemetry and mission traffic should be simple enough to exercise locally, but structured enough that later safeguards such as broker ACLs, TLS, retry policy, and observability have obvious places to attach.
 
 ## Constraints
 
-- **Mixed communication styles.** HTTP fits operator commands and reports; MQTT fits vehicle telemetry and status traffic.
-- **Local demonstration.** The stack needed to run without a hosted broker or database.
-- **Validation before persistence.** Telemetry should only be stored for registered vehicles.
-- **Lifecycle visibility.** Mission assignment needed a history, not just a final state.
-- **Production hardening path.** The design had to leave room for broker ACLs, TLS, observability, retries, rate limiting, and stronger persistence/indexing choices.
+- **Mixed communication styles.** Operator commands and reports need HTTP semantics, while vehicle telemetry and mission status updates fit MQTT topic traffic.
+- **Registered-vehicle validation.** Telemetry should not be persisted when the vehicle identifier is missing or unknown, because unregistered messages would weaken the integrity of the operational record.
+- **Lifecycle visibility.** Mission assignment needs a timestamped status history rather than one mutable field, so reports can reconstruct the sequence of events.
+- **Local demonstration.** The system had to run without managed infrastructure, which meant the broker, database, API, simulator, seed data, and sample credentials all needed a Dockerized path.
+- **Transport boundary.** Broker topic patterns should not leak into every service. MQTT concerns need to be translated into typed application events before domain processing.
+- **Production hardening path.** The implementation had to leave room for broker ACLs, TLS on MQTT and MongoDB, structured logging, retries, rate limiting, health checks, metrics, and stronger persistence choices.
 
 ## The Design
 
-The runtime stack is designed to be started locally with Docker Compose. It brings up an EMQX MQTT broker, MongoDB, the NestJS API, and a Python telemetry sender that can publish simulated vehicle telemetry to the broker. Swagger is exposed at `/api`, and the HTTP API uses URI versioning, JWT guards, global validation, and a global exception filter.
+<Mermaid
+  title="High Level Design"
+  direction="TD"
+  chart={`
+flowchart TD
+  Operator@{ icon: "igcse:terminal", form: "square", label: "Operator or Postman client", pos: "b" }
+  Api@{ icon: "igcse:terminal", form: "square", label: "NestJS API", pos: "b" }
+  Events@{ icon: "igcse:message", form: "square", label: "Event handoff", pos: "b" }
+  Broker@{ icon: "igcse:database", form: "square", label: "EMQX MQTT broker", pos: "b" }
+  Vehicle@{ icon: "igcse:phone", form: "square", label: "Vehicle or Python simulator", pos: "b" }
+  Intake@{ icon: "igcse:file-link", form: "square", label: "Telemetry and status intake", pos: "b" }
+  Store@{ icon: "igcse:database", form: "square", label: "MongoDB evidence store", pos: "b" }
+  Reports@{ icon: "igcse:file-document", form: "square", label: "Mission reports", pos: "b" }
 
-The MQTT side listens to three topic patterns:
+  Operator -->|HTTP commands| Api
+  Api -->|mission assignment| Events
+  Events -->|publish mission| Broker
+  Broker -->|vehicle topic| Vehicle
+  Vehicle -->|telemetry and status| Intake
+  Intake -->|validate and persist| Store
+  Api -->|vehicle and mission records| Store
+  Store -->|report data| Reports
+`}
+/>
+
+The diagram deliberately reduces the system to the main operational path. The HTTP API captures administrative intent, the event handoff turns a mission assignment into broker traffic, the vehicle or simulator responds with telemetry and status messages, and MongoDB keeps the evidence that later feeds reports.
+
+At application startup, NestJS connects an MQTT microservice to EMQX using MQTT v5, a generated backend listener client id, and QoS 1 subscription options. The same bootstrap configures URI API versioning, a global validation pipe that strips unknown fields, a global exception filter, JWT-guarded controllers, and Swagger at `/api`.
+
+### HTTP Surface
+
+The protected API is intentionally small and operational:
+
+- `POST /vehicle`, `GET /vehicle`, `GET /vehicle/:id`, and `PATCH /vehicle/:id` manage vehicle records.
+- `POST /v1/mission`, `GET /v1/mission`, and `GET /v1/mission/:id` manage mission definitions.
+- `POST /v1/vehicle-mission`, `GET /v1/vehicle-mission`, and `GET /v1/vehicle-mission/:id` assign missions to vehicles and expose assignments.
+- `GET /v1/telemetry/vehicle/:id` returns telemetry for a registered vehicle.
+- `GET /v1/report/missions` composes the mission report from assignments, vehicles, missions, and status histories.
+
+The controllers do not try to simulate the vehicle channel. They validate and persist intent, then emit internal events where the rest of the operational flow can continue.
+
+### MQTT And Event Boundary
+
+The MQTT controller listens to three topic families:
 
 1. `vehicle/+/telemetry`
 2. `vehicle/+/mission`
 3. `vehicle/+/mission/status`
 
-Incoming MQTT messages are routed through NestJS message handlers into an internal event service, which decouples broker concerns from domain processing. Telemetry messages are validated against registered vehicles before they are written to MongoDB. Mission status responses are persisted as timestamped status records.
+Each handler performs a simple translation. It receives a typed payload and emits an application event such as `vehicle.telemetry`, `vehicle.mission`, or `vehicle.mission.status`. That event service is deliberately narrow: it wraps Nest's event emitter and preserves a typed mapping between event topics and payload shapes.
 
-### Mission Assignment Flow
+The listener layer then owns the side effects. Telemetry events call the telemetry service, which rejects messages with no vehicle id and attempts to find the vehicle before writing the telemetry record. Mission-status events create a new status entry for the supplied vehicle-mission id. Create-vehicle-mission events update the assignment to `QUEUED` and publish the mission payload to `vehicle/{vehicleId}/mission`.
 
-Mission assignment is an event-driven flow. The HTTP API creates the vehicle-mission record, stores an initial `PENDING` status, emits a create-mission event, then a listener records the `QUEUED` status and publishes the mission payload to the target vehicle topic at `vehicle/{vehicleId}/mission`. A separate listener handles status responses such as `IN_PROGRESS`, `COMPLETED`, and `FAILED`.
+### Mission Lifecycle
 
-Persistence is handled through TypeORM over MongoDB. The data model includes vehicles, missions, vehicle-mission assignments, mission status entries, and telemetry records. Telemetry entries include a generated telemetry id, vehicle id, timestamp, GeoJSON-style location, and optional status.
+Mission assignment is the central workflow. The HTTP request first verifies that both the vehicle and mission exist. The service then creates the vehicle-mission assignment and immediately records `PENDING`. The controller emits `create.vehicle.mission`, and the create listener records `QUEUED` before publishing to the vehicle mission topic.
 
-### Reporting And Hardening
+For the local demonstration, a vehicle mission listener simulates the vehicle side of the exchange. When a mission message appears, it publishes `IN_PROGRESS`, waits briefly to represent execution, then publishes either `COMPLETED` or `FAILED`. In a production deployment, that simulation boundary would be replaced by real vehicle firmware or an integration service, while the backend contract would remain the same.
 
-The reporting path composes mission reports from multiple repositories. It joins vehicle-mission assignments with their vehicles, missions, and status histories so the API can return an operational view of what was assigned, to which vehicle, and how the mission progressed.
+<Mermaid
+  title="Mission assignment lifecycle"
+  direction="TD"
+  chart={`
+flowchart TD
+  Request@{ icon: "igcse:terminal", form: "square", label: "POST vehicle mission", pos: "b" }
+  Validate@{ icon: "igcse:text-box-search", form: "square", label: "Find vehicle and mission", pos: "b" }
+  Assign@{ icon: "igcse:file-link", form: "square", label: "Create assignment record", pos: "b" }
+  Pending@{ icon: "igcse:file-document", form: "square", label: "Insert PENDING status", pos: "b" }
+  CreateEvent@{ icon: "igcse:message", form: "square", label: "Emit create mission event", pos: "b" }
+  Queued@{ icon: "igcse:file-document", form: "square", label: "Insert QUEUED status", pos: "b" }
+  Publish@{ icon: "igcse:file-link", form: "square", label: "Publish mission topic", pos: "b" }
+  InProgress@{ icon: "igcse:phone", form: "square", label: "Receive IN_PROGRESS status", pos: "b" }
+  Final@{ icon: "igcse:shield-check", form: "square", label: "Receive final status", pos: "b" }
+  Report@{ icon: "igcse:file-document", form: "square", label: "Report status history", pos: "b" }
 
-The project also includes a Postman collection, migration tooling with `migrate-mongo`, Jest unit and e2e tests, and an improvement backlog covering production hardening areas such as broker ACLs, TLS, observability, retries, rate limiting, and stronger persistence/indexing choices.
+  Request --> Validate --> Assign --> Pending --> CreateEvent
+  CreateEvent --> Queued --> Publish --> InProgress --> Final --> Report
+`}
+/>
+
+The important safeguard is that no lifecycle transition is overwritten. Statuses are append-only records with their own ids, mission-assignment id, status value, and timestamp. This makes reporting more useful than a final-state lookup because it can explain how the system reached that state.
+
+### Persistence And Reporting
+
+MongoDB stores five operational collections through TypeORM entities: `vehicles`, `missions`, `vehicle_missions`, `vehicle_mission_status`, and `telemetry`. The entities use generated UUID-style public ids, Mongo object ids internally, and indexes on identifiers that are used for lookups and joins. Telemetry records carry the vehicle id, timestamp, GeoJSON-style point location, and optional status.
+
+The report service treats the database as an evidence store. It loads all vehicle-mission assignments, gathers the distinct vehicle and mission ids, loads related statuses, vehicles, and missions, builds lookup maps, and returns each assignment with the vehicle, mission, and status sequence attached. That shape is more valuable for operators than a flat mission list because it shows both responsibility and progression.
+
+### Local Runtime
+
+The Docker Compose stack makes the integration path visible:
+
+- `emqx` exposes MQTT and the dashboard ports for the broker.
+- `mongodb` initializes the database, app user, seed vehicle, and seed mission.
+- `autonomous_api` runs migrations, starts the NestJS API, connects to MongoDB, and connects to EMQX.
+- `telemetry_sender` packages a Python MQTT client that can publish location and status messages to a selected vehicle topic.
+
+This is not the final production posture. The improvement backlog correctly identifies the next safeguards: TLS, broker ACLs, least-privilege container users, stronger JWT signing, structured logging, OpenTelemetry, Prometheus/Grafana metrics, retries and backoff, dead-letter handling, rate limiting, health checks, and load testing. The value of the current design is that these concerns already have clear boundaries: broker security belongs at EMQX and MQTT client configuration, data integrity belongs in services and repositories, and operational visibility belongs in events, status history, and reports.
