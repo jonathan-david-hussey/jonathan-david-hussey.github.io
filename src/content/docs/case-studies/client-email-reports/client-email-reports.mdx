@@ -1,99 +1,147 @@
 ---
-title: 'Real-Time and Program-Insights Email Reporting'
-description: 'A serverless reporting pipeline for time-sensitive stream reports and weekly program-insights emails: schedule normalization, branching SQS queues, S3 report artifacts, SES templates and callback tracking.'
+title: 'Social Intelligence Reporting'
+description: 'A serverless reporting pipeline that keeps two very different email promises, time-sensitive alerts and weekly program insights, on one auditable backend through branching schedules, bounded data generation, durable S3 artifacts, SES delivery, and reconciled callback tracking.'
 category: 'case-studies'
-tags: ['C#', '.NET 6', 'AWS Lambda', 'SQS', 'S3', 'SES', 'SNS', 'Elasticsearch', 'SQL Server', 'Polly']
+tags:
+  [
+    'C#',
+    '.NET 6',
+    'AWS',
+    'AWS Lambda',
+    'Serverless',
+    'SQS',
+    'S3',
+    'SES',
+    'SNS',
+    'Elasticsearch',
+    'SQL Server',
+    'Polly',
+    'Strategy Pattern',
+    'Builder Pattern',
+    'Observer Pattern',
+    'Template Method Pattern',
+    'State Pattern',
+    'Pipeline Pattern',
+  ]
 order: 5
+reviewed: true
 role: 'Senior Software Engineer'
-dates: '2019 – 2024'
-roleSummary: 'I designed and extended the reporting pipeline across both report types — scheduling, data generation, delivery, callback processing and preview flows.'
+dates: '2019 - 2024'
+roleSummary: 'I designed and extended the reporting pipeline across both report types: scheduling, data generation, delivery, callback processing, and preview flows.'
 metrics:
-  - 'Real-time reports isolated on a dedicated generate-data queue'
-  - 'Program insights compare the current period with the previous 7 days'
-  - 'Generated JSON and rendered HTML persisted to S3 per schedule run'
+  - 'Two report types, time-sensitive alerts and weekly insights, on one shared delivery backend'
+  - 'Real-time windows shifted back by a 15-minute ingestion buffer so late posts are never missed'
+  - 'Program insights compare the current week against the previous seven days'
+  - 'Every report persisted as JSON and rendered HTML in S3 before any email is sent'
 decisions:
   - title: 'Branch by report type, converge for delivery'
-    detail: 'Branching only the scheduling and data-generation stages bought isolation where it mattered; artifact storage, sending and callback handling stay shared.'
-    tradeoff: 'Two fully separate systems would have duplicated the back half; one undifferentiated job type would have let heavy weekly analytics block operational alerts.'
+    detail: 'Only the scheduling and data-generation stages branch by type, which buys isolation where it matters, while artifact storage, sending, and callback handling stay shared.'
+    tradeoff: 'Two fully separate systems would have duplicated the back half, while one undifferentiated job type would have let heavy weekly analytics block operational alerts.'
   - title: 'A 15-minute ingestion buffer on real-time windows'
-    detail: 'Reports never silently miss late-arriving posts; the next run picks them up.'
-    tradeoff: 'Reports are deliberately at least 15 minutes behind live — completeness over immediacy for an alerting product.'
+    detail: 'Each real-time window is shifted back far enough that a report never silently misses late-arriving posts; the next run picks them up.'
+    tradeoff: 'Reports are deliberately at least 15 minutes behind live, favouring completeness over immediacy for an alerting product.'
   - title: 'Artifact-first sending'
-    detail: 'Report JSON and SES-rendered HTML are persisted to S3 before any send, so a send problem never requires regenerating data and any historical email can be inspected exactly as the client saw it.'
-    tradeoff: 'Extra storage and an extra pipeline stage.'
+    detail: 'The report data and the rendered email are both persisted to S3 before any send, so a send problem never requires regenerating data and any historical email can be inspected exactly as the client saw it.'
+    tradeoff: 'It costs extra storage and one more pipeline stage.'
   - title: 'Empty-send suppression'
-    detail: 'Real-time reports with no matching posts are skipped rather than sent — clients are never trained to ignore alerts.'
-    tradeoff: 'The pipeline''s work is invisible when nothing matched; product trust beat "proof of activity" emails.'
+    detail: 'A real-time report with no matching posts is skipped rather than sent, so clients are never trained to ignore an alert that usually means nothing.'
+    tradeoff: 'The pipeline''s work is invisible when nothing matched; product trust outweighed sending "proof of activity" emails.'
   - title: 'Previews through the real pipeline'
-    detail: 'Preview sends reuse the production path rather than a rendering shortcut, so what a client approves is what the system actually produces.'
+    detail: 'A preview reuses the production path rather than a rendering shortcut, so what a client approves is exactly what the system later produces.'
     tradeoff: 'Preview runs consume real pipeline capacity.'
 outcome:
-  - 'Every stage became replayable — a failed Search API call doesn''t erase a scheduled run, a send problem doesn''t require regenerating data, a callback failure doesn''t affect delivery.'
-  - 'Support questions ("did it send? what did it contain? did they open it?") are answered from S3 artifacts, database send records and Elasticsearch email logs rather than guesswork.'
-  - 'Email engagement flows to customer success without touching the delivery path.'
-lessons: 'Two very different reporting promises can share one operable backend if the boundaries are right: small units of work, durable handoffs, clear failure boundaries, and enough observability that support questions are answered from the system itself. Branch where the promises differ; converge where the machinery is the same.'
+  - 'Every stage is replayable: a failed search call does not erase a scheduled run, a send problem does not require regenerating data, and a callback failure does not affect delivery.'
+  - 'Support can answer what was sent, what it contained, and whether it was opened, from stored artifacts, send records, and email logs rather than by guesswork.'
+  - 'Time-sensitive alerts are never blocked by heavy weekly analytics, because the two report types are isolated where it matters and share only the delivery machinery.'
+  - 'Email engagement flows to customer success without ever touching the delivery path.'
+lessons: 'The asset worth protecting was client trust in two different promises: an alert that fires when it should, and a weekly summary that is accurate and never broken. Two very different promises can share one operable backend when the boundaries are right, namely small units of work, a durable artifact before every send, clear failure boundaries, and enough recorded evidence that support questions are answered from the system itself. The rule that held it together was simple: branch where the promises differ, and converge where the machinery is the same.'
 ---
 
 ## Context
 
-A social-media intelligence platform needed email reports that behaved differently depending on the client's intent. Real-time reports were operational: "tell me when matching content appears." Program-insights reports were analytical: "summarize how a program changed over the week."
+The platform is a social-media intelligence service whose clients expect email reports to behave according to their intent. Some reports are operational, an alert that says in effect "tell me when matching content appears". Others are analytical, a weekly summary that says "show me how a program changed over the week". One backend had to keep both promises without confusing the two.
+
+The following assets have been identified as central to that activity: the two reporting promises themselves, the schedules that decide when each report is due, the finite search budget the reports draw upon, the generated report data, the rendered emails, the recipients, the record of what was sent, and the delivery and engagement feedback that follows. We are able to regard these as assets because client trust rests upon them; any negative impact, whether a missed alert, a broken summary, or a send that cannot be accounted for, would affect not one email but the client's confidence in the product.
+
+This framing turns reporting into a question of which promises must be protected, and by which safeguards, rather than a single task of querying data and sending mail.
 
 ## The Problem
 
-Two very different reporting promises had to share one operable backend. Real-time reports needed short, repeatable windows, tolerance for ingestion delay, and a clean skip path when no posts existed. Program insights needed weekly current-versus-previous-period comparisons, topic trends, most-engaged influencers, and a richer template — with validation that fails a bad program cleanly instead of sending a broken email. Both needed durable artifacts, traceable sends and post-send feedback.
+The central difficulty was that two very different promises had to share one operable backend, and the threats to each were different. A real-time alert needs short, repeatable windows and a tolerance for the fact that posts arrive minutes after the event they belong to; if the window ignores that ingestion delay, content is silently lost. A weekly summary needs current-versus-previous comparisons, trending topics, and the most-engaged influencers, drawn from expensive analytical queries that must be bounded so they never degrade the platform for everyone else. Both also share a subtler threat: an empty "nothing happened" alert trains a client to ignore the product, and a send that leaves no trace cannot be explained when the client asks whether it arrived.
+
+The level of risk followed from the likelihood of each threat combined with the severity of its impact. The most damaging outcomes were the silent ones: a real-time report that quietly drops late-arriving posts, or a weekly report that sends a broken template, each erodes trust without presenting any visible failure, and heavy weekly analytics blocking a time-sensitive alert would be as damaging as either. Our analysis therefore favoured a design that isolated the two promises where they differ, bounded the expensive work, made every send auditable, and treated an empty alert as something to be suppressed rather than sent.
 
 ## Constraints
 
-- **Ingestion delay** — posts can arrive minutes after the event they belong to; an alerting window that ignores this silently loses content.
-- **Search API ceilings** — expensive analytical queries had to be bounded so reporting never degraded the platform.
-- **Alert fatigue** — an empty "nothing happened" email trains clients to ignore the product.
-- **Auditable sends** — support had to be able to answer exactly what was sent, to whom, and whether it arrived.
-- **Non-production safety** — the same pipeline had to be testable in staging without emailing real clients.
+- **Ingestion delay.** Posts can arrive minutes after the event they belong to, so an alerting window that ignores this silently loses content.
+- **A finite search budget.** Expensive analytical queries had to be bounded so that reporting never degraded the platform for everyone else.
+- **Alert fatigue.** An empty "nothing happened" email trains a client to ignore the product, so silence had to be a deliberate outcome rather than a default.
+- **Auditable sends.** Support had to be able to answer exactly what was sent, to whom, and whether it arrived.
+- **Non-production safety.** The same pipeline had to be exercised in staging without ever emailing a real client.
+- **Shared delivery, separate promises.** Two report types of different urgency had to share one delivery mechanism without either being able to block the other.
 
 ## The Design
 
-The core pipeline is a queue-backed chain of small stages that branches by report type and converges for delivery.
+Having identified the assets and the threats to them, it is now possible to consider the safeguards. The pipeline is a queue-backed chain of small stages, arranged as a security wheel of detection, avoidance, protection, and recovery, that branches by report type and converges for delivery. Detection is provided by per-recipient send records, month-based email logs, and delivery callbacks; avoidance by a 15-minute ingestion buffer, empty-send suppression, and validation of a report's queries before the expensive work begins; protection by isolating the two report types on separate generation queues, bounding concurrency against the search budget, and persisting a durable artifact before any email leaves; and recovery by making every stage replayable from that artifact and reconciling every callback to the run that produced it. These safeguards are refined continually rather than fixed once.
 
-```text
-real-time report scheduler
-program-insights scheduler
-  -> report processor queue
-  -> report processor Lambda
-  -> generate-data queue / real-time generate-data queue
-  -> generate-data Lambda
-  -> S3 JSON artifact
-  -> email queue
-  -> send-email Lambda
-  -> SES bulk templated email
+<Mermaid
+  title="The reporting pipeline"
+  direction="TD"
+  chart={`
+flowchart TD
+  RtSched@{ icon: "igcse:target", form: "square", label: "Real-time scheduler", pos: "b" }
+  PiSched@{ icon: "igcse:target", form: "square", label: "Program-insights scheduler", pos: "b" }
+  Processor@{ icon: "igcse:filter", form: "square", label: "Report processor: branch by type", pos: "b" }
+  RtGen@{ icon: "igcse:message", form: "square", label: "Real-time generation queue", pos: "b" }
+  PiGen@{ icon: "igcse:message", form: "square", label: "Insights generation queue", pos: "b" }
+  Generate@{ icon: "igcse:terminal", form: "square", label: "Generate report data", pos: "b" }
+  Artifact@{ icon: "igcse:database", form: "square", label: "Durable report artifact", pos: "b" }
+  Send@{ icon: "igcse:terminal", form: "square", label: "Render and send email", pos: "b" }
+  Callbacks@{ icon: "igcse:message", form: "square", label: "Delivery and engagement callbacks", pos: "b" }
+  Audit@{ icon: "igcse:database", form: "square", label: "Send records and email logs", pos: "b" }
 
-SES callbacks
-  -> SNS
-  -> callback queue -> status updates + Elasticsearch email logs
-  -> ChurnZero queue -> customer-success activity tracking
+  RtSched --> Processor
+  PiSched --> Processor
+  Processor --> RtGen --> Generate
+  Processor --> PiGen --> Generate
+  Generate --> Artifact --> Send
+  Send --> Callbacks --> Audit
+` }
+/>
 
-preview notification
-  -> preview processor
-  -> report processor queue
-```
+Branching happens once, at the front. The report processor creates a run request, attaches a run identifier to the message, and routes it by type: real-time schedules go to a dedicated real-time generation queue, while program-insights schedules use the standard one. Both generation stages run with deliberately bounded concurrency, which keeps the expensive search work in check and makes any failure easy to isolate by run. From the artifact onwards the two promises share the same machinery.
 
-The report processor creates a run request, attaches the `RunId` to the message, and then branches on report type. Real-time schedules are routed to a dedicated real-time generate-data queue; program-insights schedules use the standard one. Both generate-data event sources process one message at a time and cap concurrency at two, which keeps expensive Search API work bounded and makes failures easy to isolate by schedule run.
+Real-time scheduling is deliberately windowed, and this is where avoidance is exercised most directly. Each run is aligned to a regular interval and its query window is shifted back by a short ingestion buffer, so that the most recent minutes are left untouched and posts that arrive late are still captured on the following run. The generator gathers the report's topics and influencers, asks the search surface for matching posts, and records the activity it finds. If there are no matching posts and the run is not a preview, the send stage skips the email entirely, so an alert is never sent to say that nothing happened.
 
-### Real-Time Reports
+Program insights run on a weekly cadence. The scheduler waits until a full week has passed before the next run, then compares the current week against the previous one across the programme's overview, its trending topics, and its most-engaged influencers. Before committing to the full request, the generator validates the report's queries with a small search call, so that a badly shaped programme fails cleanly rather than producing a broken template. Every search call is wrapped in a Polly retry proxy that separates a transient failure, which is retried with backoff, from a permanent one, which stops at once, because a temporary outage and an invalid programme call for entirely different responses.
 
-Real-time scheduling is deliberately windowed. The scheduler rounds the current UTC time down to the nearest 15-minute interval, then shifts the query window back by a minimum 15-minute ingestion buffer. In practice, a scheduler tick around `12:06` normalizes to `12:00`, searches `11:30` to `11:45`, and leaves the most recent 15 minutes alone so late-arriving tweets can still be captured on the next run.
+<Mermaid
+  title="Artifact-first sending and the callback loop"
+  direction="TD"
+  chart={`
+flowchart TD
+  GenData@{ icon: "igcse:terminal", form: "square", label: "Generate report data", pos: "b" }
+  Json@{ icon: "igcse:database", form: "square", label: "Report JSON artifact", pos: "b" }
+  Empty@{ icon: "igcse:target", form: "square", label: "Empty real-time report?", pos: "b" }
+  Skip@{ icon: "igcse:filter", form: "square", label: "Skip send", pos: "b" }
+  Render@{ icon: "igcse:terminal", form: "square", label: "Render template", pos: "b" }
+  Html@{ icon: "igcse:database", form: "square", label: "Rendered HTML artifact", pos: "b" }
+  SendEmail@{ icon: "igcse:message", form: "square", label: "Send templated email", pos: "b" }
+  Records@{ icon: "igcse:database", form: "square", label: "Per-recipient send records", pos: "b" }
+  Callback@{ icon: "igcse:message", form: "square", label: "Delivery, bounce, complaint callbacks", pos: "b" }
+  Reconcile@{ icon: "igcse:filter", form: "square", label: "Reconcile status and email logs", pos: "b" }
+  Engage@{ icon: "igcse:text-search", form: "square", label: "Forward engagement to customer success", pos: "b" }
 
-The real-time generate-data path fetches the selected topics and influencers, builds account maps for the configured channels, asks the Search API for matching posts, prepares post HTML, and records influencer activity. If there are no posts and the request is not a preview, the send-email stage skips the real-time email entirely.
+  GenData --> Json --> Empty
+  Empty -- "yes" --> Skip
+  Empty -- "no" --> Render --> Html --> SendEmail --> Records
+  SendEmail --> Callback --> Reconcile
+  Callback --> Engage
+` }
+/>
 
-### Program Insights
+Both report paths produce a durable artifact before any email is sent, and this is the foundation of recovery. The generation stage writes the report data to S3, then queues the send stage. That stage reads the artifact, asks SES to render the template, saves the rendered HTML back to S3 so any historical email can be inspected exactly as the client received it, and sends the templated email. The per-recipient results are written to SQL Server so that later callbacks can be reconciled to the run that produced them, and in staging-like environments an override recipient reroutes all mail so the pipeline can be exercised without reaching a real client.
 
-The weekly scheduler checks the configured day and hour in the schedule's timezone and prevents another run until at least seven days have passed. When a schedule is due, it builds a reporting window from the previous Saturday at midnight through Friday at `23:59:59.999`, then compares current and previous periods across program overview, trending topics, most-engaged influencers and per-influencer topic engagement.
+Closing the loop is where detection lives. Delivery, bounce, and complaint events arrive through SNS and are processed from queues. The callback processor updates the run status and indexes an email-log entry into Elasticsearch, while a separate processor consumes the same events through its own queue and forwards engagement to customer success, so that post-send tracking never couples to the send path. Previews exercise the whole machinery from end to end: a preview marks its schedule accordingly, applies the preview window rules, and feeds the ordinary report-processor queue, so what a client approves is exactly what the system produces in production.
 
-Before doing the full request, the generator validates topic queries with a small Search API call so a bad topic shape fails the schedule cleanly instead of producing a broken template. Search calls are wrapped with a Polly retry proxy that distinguishes transient failures (retry with backoff) from expected data-generation exceptions (exit immediately) — "try again later" and "this program is not valid for insights" need different operational behaviour.
-
-### Sending Without Losing the Audit Trail
-
-Both report paths produce a durable artifact before any email is sent: the generate-data Lambda writes the report JSON to S3 under a path containing the schedule ID and run ID, then queues the send-email stage. The send-email Lambda reads that artifact, asks SES to render the template, saves the rendered HTML back to S3 as `RenderedTemplate-{runId}.html`, then sends a bulk templated email tagged with schedule ID, preview status and environment. Per-recipient message IDs and errors are written back to the database so callbacks can be reconciled to the original run. An override email setting reroutes all recipients in staging-like environments.
-
-### Closing the Loop
-
-SES delivery, bounce and complaint events arrive through SNS and are processed from queues. The callback processor updates request status and bulk-indexes email-log documents into a month-based Elasticsearch index. A separate ChurnZero processor consumes the same topic through its own queue and forwards engagement events to customer success — post-send tracking never couples to the send path. Previews exercise the same machinery end to end: the preview processor marks a schedule as preview, applies preview window rules, and feeds the normal report processor queue.
+The result is a reporting platform shaped around its promises. It isolates the two report types where their urgencies differ and shares the delivery machinery where they do not, spends the search budget only within bounded and validated windows, suppresses the empty alert that would erode trust, and preserves a durable artifact and a reconciled record for every send, so that the question a client or a support engineer might ask, whether a report was sent, what it contained, and whether it was opened, is always answered by the system rather than by guesswork.

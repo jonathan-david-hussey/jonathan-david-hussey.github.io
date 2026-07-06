@@ -1,97 +1,126 @@
 ---
-title: 'Twitter Parser Bridge for a v2 Migration'
-description: 'A .NET Standard parser library that split Twitter v2 API responses into per-tweet documents and converted them into the platform''s legacy v1 Status shape using feature-derived display-range rules.'
+title: 'Twitter Parser Bridge'
+description: 'A .NET Standard NuGet library that converts newer Twitter API responses into the tweet shape the platform already consumed, so many downstream applications of differing .NET versions could keep working unchanged and migrate on their own schedule.'
 category: 'case-studies'
-tags: ['C#', '.NET Standard 2.0', 'Newtonsoft.Json', 'xUnit', 'AutoFixture', 'FluentAssertions', 'Twitter API v2', 'NuGet']
+tags:
+  [
+    'C#',
+    '.NET Standard 2.0',
+    'NuGet',
+    'Newtonsoft.Json',
+    'xUnit',
+    'AutoFixture',
+    'FluentAssertions',
+    'Twitter API v2',
+    'Adapter Pattern',
+    'Chain of Responsibility Pattern',
+    'Strategy Pattern',
+    'Facade Pattern'
+  ]
 order: 6
+reviewed: true
 role: 'Senior Software Engineer'
-dates: '2019 – 2024'
-roleSummary: 'I analysed the v2 format, derived the display-range rules from two years of sampled tweets, and built and packaged the conversion library the platform ingests through.'
+dates: '2019 - 2024'
+roleSummary: 'I analysed the newer API format, derived the display-range rules from two years of sampled tweets, and built and packaged the broadly targeted conversion library the platform ingests through.'
 metrics:
-  - 'Extraction rules derived from millions of tweets sampled over 2 years'
-  - '298 JSON fixtures, including 227 display-text-range fixtures'
-  - 'NuGet package targeting netstandard2.0'
+  - 'Display-range rules derived from millions of tweets sampled over two years'
+  - '298 JSON fixtures, most of them exercising display-range derivation'
+  - 'One NuGet package targeting .NET Standard 2.0, consumed across every downstream project'
+  - 'Ten dependent applications kept working unchanged, each migrating on its own schedule'
 decisions:
   - title: 'Deterministic rules over a model call'
-    detail: 'ML analysis found the display-range patterns, but the shipped system encodes them as inspectable C# detectors — a failed tweet is debugged by its features, matching detector and fixture, not by interrogating an opaque model.'
-    tradeoff: 'New patterns require re-analysis and new detectors rather than retraining.'
-  - title: 'Null over guessing'
-    detail: 'Dead v1 fields are set to safe defaults rather than fabricated; new v2 fields ride along in a dedicated extension object. Consumers get honesty about what v2 no longer provides, plus a forward path.'
+    detail: 'Machine-learning analysis found the display-range patterns, but the shipped system encodes them as inspectable rules, so a wrong result is debugged by its features and its matching fixture rather than by interrogating an opaque model.'
+    tradeoff: 'A new pattern requires fresh analysis and a new rule rather than retraining.'
+  - title: 'Safe defaults over guessing'
+    detail: 'Fields with no equivalent in the established shape are set to safe defaults rather than fabricated, while fields that exist only in the newer data ride along in a dedicated extension, so consumers get an honest document plus a forward path.'
+    tradeoff: 'Consumers that want the new-only data have to reach into the extension for it.'
   - title: 'Recursion with a depth limit'
-    detail: 'Quoted and retweeted content passes back through the same converter, keeping one code path.'
-    tradeoff: 'A hard cap on nesting — acceptable because real timelines rarely nest deep, and the cap fails safe.'
-  - title: '.NET Standard 2.0 target'
-    detail: 'A single package serves every runtime in the platform, old and new.'
-    tradeoff: 'Newer language and library features were given up for reach.'
+    detail: 'Quoted and retweeted content passes back through the same converter, keeping one code path for every level of nesting.'
+    tradeoff: 'A hard cap on depth, which is acceptable because real timelines rarely nest far and the cap fails safe.'
+  - title: 'Target the broadest runtime for maximum compatibility'
+    detail: 'Shipping one NuGet package that targets .NET Standard 2.0 means a single build loads and runs in every downstream project regardless of its .NET version, so no consumer had to change runtime to adopt it.'
+    tradeoff: 'Newer language and library features were given up in exchange for that reach.'
   - title: 'Fixture-heavy over unit-heavy testing'
-    detail: 'Hundreds of real-tweet JSON fixtures capture where migration risk actually lives — weird real-world data, not logic that synthetic unit tests would cover.'
-    tradeoff: 'A fixture suite that costs maintenance as tweet shapes evolve.'
+    detail: 'Hundreds of real-tweet fixtures capture where the risk actually lives, in strange real-world data, rather than in logic that synthetic unit tests would already cover.'
+    tradeoff: 'The fixture suite costs maintenance as tweet shapes evolve.'
 outcome:
-  - 'Ten downstream applications kept consuming the v1 shape they already understood while the platform completed its v2 migration — no coordinated release, no big-bang cutover.'
-  - 'The package shipped as an internal NuGet library targeting netstandard2.0.'
-  - 'The fixture suite continues to catch drift when new tweet shapes appear.'
-lessons: 'Reduce migration blast radius with a compatibility layer: v2 in, v1-shaped status out, with v2-only data preserved where it matters. And turn exploratory analysis into maintainable production code — machine learning finds the patterns; the shipped system encodes them as small, testable rules with real fixtures around the strange cases.'
+  - 'Ten downstream applications kept consuming the established tweet shape they already understood, with no coordinated release and no big-bang cutover.'
+  - 'One NuGet package targeting .NET Standard 2.0 ran across every consumer regardless of its .NET version.'
+  - 'The fixture suite continues to catch drift whenever a new tweet shape appears.'
+  - 'Each consumer migrated to the newer data when it was ready, not when a coordinated release forced it.'
+lessons: 'The asset worth protecting was the contract that a great deal of downstream software already depended upon. A compatibility layer, newer data in and the established shape out with the new-only fields preserved to one side, let the platform absorb a breaking provider change without a coordinated migration, and packaging it for the broadest runtime meant no consumer had to move in order to adopt it. The other lesson was about analysis becoming code: machine learning found the display-range patterns, but the shipped system encodes them as small, inspectable rules with real fixtures around the strange cases, so a wrong result is explained by its features rather than by interrogating a model.'
 ---
 
 ## Context
 
-The platform had years of downstream code built around Twitter's v1 `Status` JSON shape. Search indexing, reporting, enrichment and ingestion workflows all knew how to read that document. Twitter v2 changed the contract: tweet data arrived as `data`, `includes`, referenced tweets, users, media, polls, places and errors spread across related collections.
+The platform had years of downstream code built around one established shape for a tweet. Search indexing, reporting, enrichment, and ingestion all knew how to read that document. When the provider released a new major version of its API, it changed the contract: a tweet's data now arrived spread across related collections rather than as a single self-contained record.
+
+The following assets have been identified as central to that dependency: the established tweet shape itself, the many downstream applications built upon it, the fidelity of each converted tweet, the derived display range that governs how a tweet is shown and indexed, and the compatibility of the library across every consumer's runtime. We are able to regard these as assets because a great deal of working software rested upon them; any negative impact, whether a broken shape, a mis-derived field, or a package that would not load in an older project, would affect not one tweet but every system downstream of it.
+
+This framing turns the migration into a question of which dependencies must be protected, and by which safeguards, rather than a single task of reading the new format.
 
 ## The Problem
 
-The migration problem was not just "rename fields." A v2 timeline response contains many tweets, each depending on different users, media, places, polls and referenced tweets scattered across shared collections — while the old platform needed one coherent v1-style document per tweet, with enough nested structure preserved that downstream systems did not have to learn v2 all at once. Hardest of all, `display_text_range` was removed or changed across API formats, but display and indexing behaviour still depended on it: the field had to be *derived*, not copied.
+The threat was not merely renamed fields. A single response from the new API carries many tweets, each depending on users, media, places, polls, and referenced tweets scattered across shared collections, while the platform needed one coherent, self-contained document per tweet in the shape it already understood. Hardest of all, the value that records which part of a tweet should actually be displayed was removed or altered across the newer formats, yet display and indexing still depended upon it, so it had to be derived rather than copied.
+
+The level of risk followed from likelihood and severity together. Forcing ten dependent applications through a coordinated, simultaneous migration carried a high likelihood of breaking something, and a conversion that silently produced a wrong shape or a wrong display range would corrupt downstream data with no visible failure at all. Our analysis therefore favoured a compatibility layer: absorb the provider change in one place, keep emitting the established shape, and let each consumer adopt the newer data when it was ready.
 
 ## Constraints
 
-- **A frozen contract.** Downstream systems needed v1-shaped output; none of them could be forced to migrate on the parser's schedule.
-- **Real-world tweet weirdness.** Emoji-only tweets, surrogate pairs, nested quotes-of-retweets, language-specific reply formats — the rules had to survive all of it.
-- **Old runtimes.** The library had to run everywhere the platform did, which meant targeting .NET Standard 2.0.
+- **A frozen downstream contract.** Many systems consumed the established tweet shape, and none of them could be forced to migrate on the library's schedule.
+- **Real-world variety.** Emoji-only tweets, surrogate pairs, nested quotes of retweets, and language-specific reply formats all had to be handled, not just the common case.
+- **Many runtimes, many versions.** The library had to load and run in every downstream project, old and new, which meant targeting the broadest common runtime.
+- **A derived, not copied, display range.** The range that governs display and indexing had to be reconstructed from the tweet itself, reliably enough to trust across the whole corpus.
 
 ## The Design
 
-The package was built as a `.NET Standard 2.0` library with a NuGet package definition. It exposed a small service surface for converting one v2 tweet response or a v2 tweets response into v1-style JSON, while keeping the heavier conversion logic inside domain services.
+Having identified the assets and the threats to them, the safeguard is a single compatibility layer packaged for the broadest possible reach. The library takes a response from the newer API and returns the established shape, so the provider change is absorbed in one place. It is shipped as one NuGet package targeting .NET Standard 2.0, and that is the decision that matters most for compatibility: a single build runs in every downstream project regardless of its .NET version, so no consumer had to change runtime, or indeed change at all, in order to keep working. The remaining safeguards fall into a familiar shape: prevent the breaking change from reaching consumers, avoid fabricating data the newer format no longer provides, and detect drift early through fixtures.
 
-```text
-Twitter v2 timeline / lookup response
-  -> split into per-tweet v2 responses
-  -> attach relevant includes and errors
-  -> detect tweet type
-  -> extract tweet features
-  -> derive display_text_range
-  -> convert into v1 Status JSON
-```
+<Mermaid
+  title="The conversion pipeline"
+  direction="TD"
+  chart={`
+flowchart TD
+  Response@{ icon: "igcse:message", form: "square", label: "Provider response, many tweets", pos: "b" }
+  Split@{ icon: "igcse:filter", form: "square", label: "Split into per-tweet documents", pos: "b" }
+  Attach@{ icon: "igcse:file-link", form: "square", label: "Attach related records", pos: "b" }
+  Detect@{ icon: "igcse:target", form: "square", label: "Detect tweet type", pos: "b" }
+  Features@{ icon: "igcse:fingerprint", form: "square", label: "Extract text features", pos: "b" }
+  Range@{ icon: "igcse:crop", form: "square", label: "Derive display range", pos: "b" }
+  Convert@{ icon: "igcse:terminal", form: "square", label: "Convert to the established shape", pos: "b" }
+  Output@{ icon: "igcse:file-document", form: "square", label: "Downstream tweet document", pos: "b" }
+  Skip@{ icon: "igcse:filter", form: "square", label: "Skip if unconvertible", pos: "b" }
 
-### Splitting Responses
+  Response --> Split --> Attach --> Detect --> Features --> Range --> Convert
+  Convert -- "safe" --> Output
+  Convert -- "unsafe" --> Skip
+` }
+/>
 
-The first boundary was response extraction. A Twitter v2 timeline response includes shared `includes` collections, but downstream conversion is easier when each tweet has its own response document. The tweet service builds a dictionary keyed by tweet ID and, for each tweet, attaches the tweet itself, referenced tweets, users, media, places, polls and matching errors relevant to that tweet. That step let the converter operate on one tweet at a time without losing the context needed for quotes, retweets, replies and attachments.
+A response arrives carrying many tweets over shared collections, so the first step is to make each tweet self-contained. The library builds one document per tweet and attaches the referenced tweets, users, media, places, and polls relevant to that tweet, so the converter can work on a single tweet at a time without losing the context a quote, retweet, or reply needs. A response that cannot be converted safely is skipped rather than allowed to corrupt the output.
 
-### Conversion as a Contract
+Conversion itself is treated as a contract. Focused converters map each part into the established shape, rebuilding the tweet, the author, and the entities such as hashtags, mentions, links, and media. Values with no equivalent in the older shape are set to safe defaults rather than guessed, and values that exist only in the newer data are preserved to one side in a dedicated extension, so a consumer receives an honest older document and can reach for the new fields when it chooses to. Quotes and retweets are recursive: a referenced tweet passes back through the same converter, with a depth limit so that real-world nesting cannot run away.
 
-The converter maps v2 data into the older `Status` model through focused field converters. Top-level fields handle IDs, timestamps, language, text, source and public metrics. User conversion rebuilds screen name, profile counts, profile URLs, withheld countries and user entities. Entity converters rebuild hashtags, symbols, mentions, URLs, media and polls. Geo and place converters restore location-shaped data where v2 provides it.
+<Mermaid
+  title="Deriving the display range"
+  direction="TD"
+  chart={`
+flowchart TD
+  Text@{ icon: "igcse:file-document", form: "square", label: "Tweet text and type", pos: "b" }
+  Extract@{ icon: "igcse:fingerprint", form: "square", label: "Extract text features", pos: "b" }
+  Chain@{ icon: "igcse:filter", form: "square", label: "Ordered detector chain", pos: "b" }
+  Match@{ icon: "igcse:target", form: "square", label: "First matching detector", pos: "b" }
+  CatchAll@{ icon: "igcse:shield-check", form: "square", label: "Catch-all fallback", pos: "b" }
+  RangeOut@{ icon: "igcse:crop", form: "square", label: "Bounded display range", pos: "b" }
 
-Some v1 fields no longer existed in v2, so the converter deliberately set them to `null` or safe defaults instead of guessing. Some v2 fields had no v1 home, so they were preserved under a dedicated `V2` extension object: impression count, bookmark count and conversation ID.
+  Text --> Extract --> Chain
+  Chain -- "first match" --> Match --> RangeOut
+  Chain -- "no match" --> CatchAll --> RangeOut
+` }
+/>
 
-Quotes and retweets were recursive: a referenced v2 tweet passes back through the same converter, with a maximum recursion depth to avoid runaway nesting on real timeline data.
+Deriving the display range is the part that carried the most risk, because it had to be reconstructed rather than read. The rules came from machine-learning analysis over millions of tweets sampled across two years, and were then encoded as explicit, inspectable detectors instead of a model call. The library establishes whether a tweet is a normal post, a reply, a quote, or a retweet, extracts features from the text, such as whether it opens with a handle, whether it ends with a link, whether it carries media, and its length measured with awareness of surrogate pairs, and then runs an ordered chain of detectors, because replies are where the range is most ambiguous. A catch-all detector sits last so that even an unusual tweet still produces a bounded range. Because the rules are inspectable, a wrong result is debugged by its features and its matching fixture, not by interrogating an opaque model.
 
-### Display Range Rules
+The test suite is built where the risk actually lives. Hundreds of real-tweet fixtures, most of them exercising display-range derivation, compare expected output against converted input for replies, retweets, quotes, normal posts, and nested references, and the same fixtures can be run over folders of sampled tweets to catch drift when a new tweet shape appears.
 
-The rules for deriving `display_text_range` came from machine-learning analysis over millions of tweets sampled across a two-year window, then encoded as explicit feature-based detectors. The code first detects whether the response is a normal tweet, reply, quote or retweet, then extracts features from the text:
-
-```text
-starts with handle
-reply handle at start or end
-has media
-has URL
-ends with external URL
-tweet references itself
-consecutive handles
-consecutive URLs
-language code
-surrogate-pair-aware text length
-```
-
-Replies use an ordered detector chain because replies are where display ranges are most ambiguous — combinations such as "starts with handle and ends with URL," "does not start with handle but has media," and language-specific exceptions. A catch-all detector remains last in the chain so unusual tweet shapes still produce a bounded range.
-
-### Testing the Edge Cases
-
-The fixture suite reflects the migration risk: 298 JSON fixtures, including 227 display-text-range fixtures and 51 v2-to-v1 converter fixtures. Converter tests compare expected v1 JSON against converted v2 JSON for replies, retweets, quotes, normal tweets and nested references. Display-range tests cover emoji-only tweets, non-ASCII text, many handles, many URLs, media URLs, external links, self-references and language-code exceptions. Integration tests can run over folders of sampled tweets to catch parser drift when new tweet shapes appear.
+The result is a compatibility bridge shaped around the software that depends on it. It absorbs a breaking provider change in one place, emits the shape that many applications already understood, preserves the new-only data to one side, derives the display range from inspectable rules with fixtures around the hard cases, and ships as a single broadly targeted package, so that every consumer, whatever its .NET version, keeps working and migrates on its own schedule rather than on the provider's.

@@ -1,105 +1,147 @@
 ---
-title: 'Twitter Ingestion Through an API Migration'
-description: 'A queue-driven Twitter ingestion system that kept refresh, backfill, pagination and downstream compatibility separate while the platform moved from legacy API shapes to Twitter v2.'
+title: 'Twitter Ingestion for a Social Intelligence Platform'
+description: 'A queue-driven, serverless Twitter ingestion system that keeps hundreds of thousands of accounts fresh under provider rate limits through scheduled refresh, a cheap validation gate, an autoscaling ECS ingester, bounded pagination, priority backfill, and Kinesis streaming into search and reporting.'
 category: 'case-studies'
-tags: ['C#', '.NET 6', 'AWS ECS', 'AWS Lambda', 'SQS', 'Kinesis', 'SQL Server', 'Elasticsearch', 'TPL Dataflow', 'Polly']
+tags:
+  [
+    'C#',
+    '.NET 6',
+    'AWS',
+    'AWS ECS',
+    'AWS Lambda',
+    'Serverless',
+    'SQS',
+    'Kinesis',
+    'SQL Server',
+    'Elasticsearch',
+    'TPL Dataflow',
+    'Polly',
+    'Strategy Pattern',
+    'Observer Pattern',
+    'State Pattern',
+    'Adapter Pattern',
+    'Pipeline Pattern',
+  ]
 order: 4
+reviewed: true
 role: 'Senior Software Engineer'
-dates: '2019 – 2024'
-roleSummary: 'I led the v1-to-v2 migration and owned the ingestion loop: scheduling, pagination, backfill priority, and the fix for the long-standing yield defect.'
+dates: '2019 - 2024'
+roleSummary: 'I owned the ingestion loop end to end: refresh and backfill scheduling, candidate validation, the autoscaling ingester, bounded pagination, rate-limit handling, and the fix for a long-standing yield defect.'
 metrics:
-  - 'Restored a capped ingestion yield from 6.25% to 100%'
-  - '560k Twitter IDs scheduled in about 210 seconds'
-  - 'Priority backfill scheduler processed 5,000 IDs every 5 minutes'
+  - 'Restored a rate-capped ingestion yield from 6.25% to 100% per request'
+  - 'Scheduled 560k Twitter identifiers in about 210 seconds using parallelised enqueue'
+  - 'Priority backfill of 5,000 identifiers every 5 minutes without starving routine refresh'
+  - 'One autoscaling ECS ingester serves both refresh and backfill, scaling to zero when idle'
 decisions:
   - title: 'A cheap validation gate before expensive downloads'
-    detail: 'Download workers only ever see accounts with new, accessible data — the rate-limit budget goes to work that yields tweets.'
-    tradeoff: 'An extra hop per candidate.'
-  - title: 'One ingester, two queues, weighted preference'
-    detail: 'A 3:1 priority preference on the same ECS consumer made backfill fast without starving refresh — and without a second download/parse/publish path to maintain.'
-    tradeoff: 'Queue preference tuning became an operational concern.'
-  - title: 'Synthetic time-window IDs'
-    detail: 'Generating boundary tweet IDs from timestamps made every download request explicitly bounded, which is what made the pagination continuation rule verifiable — and the yield bug findable.'
-  - title: 'A compatibility layer over a coordinated migration'
-    detail: 'Converting v2 responses to the v1 shape at ingestion let ten downstream applications migrate on their own schedules with zero coordinated release.'
-    tradeoff: 'A whole parser library to build and maintain.'
-  - title: 'Deliberately serial status updates'
-    detail: 'The status updater processes one ID per invocation with capped concurrency because the Search API has a ceiling; scheduling throughput was won elsewhere — TPL Dataflow parallelizing the enqueue.'
-    tradeoff: 'Status propagation is slower than it could be, by design.'
+    detail: 'A validator asks the inexpensive question first, whether an account has new, accessible tweets since the last check, so the rate budget is spent only on work that will actually yield data.'
+    tradeoff: 'Each candidate carries one extra hop, but the download workers stop cycling through accounts that have nothing new to give.'
+  - title: 'One autoscaling ingester, two queues, weighted preference'
+    detail: 'A single ingester scales from zero on queue depth and consumes both a refresh queue and a priority queue, favouring the priority queue by roughly three to one so backfill stays fast without a second download path to maintain.'
+    tradeoff: 'Queue-preference tuning becomes an operational concern, but there is only one ingestion path to reason about and to pay for.'
+  - title: 'Make pagination bounded and verifiable'
+    detail: 'Each download is bounded to a synthetic time window derived from timestamps, and a continuation rule requeues the same account with a lowered upper bound while useful history remains, so under-collection cannot pass unnoticed.'
+    tradeoff: 'An account may be requeued several times, but every request is explicitly bounded and its progress is checkable.'
+  - title: 'Normalise provider responses at the ingestion boundary'
+    detail: 'Retrieved tweets are converted into one internal document shape at the point of ingestion, with missing referenced tweets looked up and merged before conversion, and unconvertible windows skipped rather than allowed to poison the stream.'
+    tradeoff: 'A conversion layer has to be maintained, but downstream search, reporting, and profiles stay insulated from changes in the provider response.'
+  - title: 'Deliberately serial status updates against a search ceiling'
+    detail: 'The ingestion-status updater processes one identifier per invocation with capped concurrency because the search surface has a ceiling of its own; scheduling throughput is won separately by parallelising the enqueue.'
+    tradeoff: 'Status propagates more slowly than it otherwise might, by design, so the search surface is never overwhelmed.'
 outcome:
-  - 'The pagination fix restored ingestion yield per request from 6.25% to 100%, lifting search quality, reporting accuracy and profile completeness across the product.'
-  - 'The platform migrated from Twitter v1 to v2 across ten dependent applications without downstream disruption.'
-  - 'Backfill recovered history at 5,000 IDs every 5 minutes without starving routine refresh, and the ingestion loop scaled to zero when idle.'
-lessons: 'Moving a live ingestion platform without breaking its contract comes down to separation: decisions from downloads, backfill from refresh, provider API shape from internal document shape, search-derived status from source-of-truth scheduling. That separation is why the pipeline could survive a provider migration, recover missing history, and fix a yield bug without forcing every consumer to learn a new API at once.'
+  - 'A pagination fix restored ingestion yield per request from 6.25% to 100%, lifting search quality, reporting accuracy, and profile completeness across the product.'
+  - 'Backfill recovered missing history at 5,000 identifiers every 5 minutes without starving routine refresh, and the ingester scaled to zero when idle.'
+  - 'The rate budget is respected by construction: cheap validation, bounded windows, and reset-aware scheduling spend calls only where new data exists.'
+  - 'Downstream search, reporting, and profile systems keep consuming one stable internal tweet shape, insulated from changes in the provider response.'
+lessons: 'The asset worth protecting in an ingestion platform is not any single download; it is the freshness of the data, the provider''s finite rate budget, and the continuity of everything downstream that depends upon both. The safeguards that held it together were all separations: decisions from downloads, backfill from refresh, the provider response shape from the internal document shape, and search-derived status from source-of-truth scheduling. That separation is what let the pipeline spend its rate budget only where it paid off, recover missing history without starving routine refresh, and correct a long-standing yield defect without disturbing a single downstream consumer.'
 ---
 
 ## Context
 
-The platform depended on Twitter data for search, reporting and influencer profiles. That meant the ingestion system had to keep hundreds of thousands of accounts fresh, pull new posts without wasting API calls, backfill important gaps, and preserve compatibility with downstream systems already built around an older tweet JSON shape.
+The platform is a social-media intelligence service whose search, reporting, and influencer profiles all depend upon a steady supply of Twitter data. The ingestion system therefore had to keep hundreds of thousands of accounts fresh, retrieve new posts without wasting provider calls, recover important gaps in history, and hand everything downstream in a shape the rest of the platform already understood.
+
+The following assets have been identified as central to that activity: the freshness of each account's posts, the provider's finite rate-limit budget, the schedule that decides which account is due, the download requests in flight, the retrieved tweets, the internal document shape consumed downstream, the ingestion-status records, and the last-processed position that allows each refresh to resume cleanly. We are able to regard these as assets because they are essential to the search, reporting, and profile products that rest upon them; any negative impact upon them would affect not a single account but the continuity and accuracy of the entire platform.
+
+This framing turns ingestion into a question of which assets must be protected, and by which safeguards, rather than a single task of calling Twitter and storing the result.
 
 ## The Problem
 
-The hard part was not the initial download. It was keeping the whole loop healthy under provider limits: deciding who really needed a refresh, paginating until the useful range was exhausted, prioritizing urgent backfills without starving normal refreshes, and migrating to Twitter v2 without forcing every downstream consumer to change at once. A long-standing production defect in the pagination path — silently capping ingestion yield at 6.25% per request — made clear that pagination had to be treated as a first-class design concern, not plumbing.
+The threats to these assets do not appear at the moment of the first download; they appear in keeping the whole loop healthy under a finite rate budget. A call spent upon an account with no new data is a call denied to one that has some. An unbounded download may page indefinitely or, worse, stop early and without warning. Backfill, which is usually more urgent than routine refresh, may crowd refresh out entirely if the two share a budget without discipline. And the status loop that depends upon the search surface carries a ceiling of its own, independent of the provider's.
+
+The most serious threat was silent under-collection. A long-standing defect in the pagination path capped the yield of each request at a fraction of what was available, quietly starving search, reporting, and profiles of data while presenting no visible failure at all.
+
+The level of risk followed, as it usually does, from the likelihood of a threat combined with the severity of its impact. A silent and recurring loss of data carried a far higher risk than a visible and occasional failure, because the former degrades every dependent product at once and leaves no trace to follow. Our analysis therefore treated pagination, rate discipline, and the separation of concerns as first-class design rather than plumbing.
 
 ## Constraints
 
-- **Provider rate limits** — every wasted call against an account with no new data was a call not spent on one that had some.
-- **A frozen downstream contract.** Search indexing, reporting and enrichment all consumed the older v1-style tweet document; the migration could not force them to change together.
-- **Backfill urgency without starvation.** Recovering missing history was usually more urgent than routine refresh, but it must never permanently crowd refresh out.
-- **Search API ceilings** on the status-update loop, independent of Twitter's own limits.
+- **A finite provider rate budget.** Every call spent upon an account with no new data was a call denied to one that had some.
+- **A stable downstream contract.** Search indexing, reporting, and enrichment all consumed one internal tweet shape, which ingestion had to keep producing regardless of changes in the provider response.
+- **Backfill urgency without starvation.** Recovering missing history was usually more urgent than routine refresh, yet it could never be permitted to crowd refresh out for good.
+- **A separate search ceiling.** The ingestion-status loop depended upon the search surface, which imposed a limit of its own, independent of the provider's.
+- **Bounded, verifiable pagination.** Each download had to cover a known window and continue only while useful history remained, so that under-collection could not pass unnoticed.
+- **Recoverability and idle economy.** Thousands of small download tasks had to be replayable, and the ingester had to cost nothing when there was no work to do.
 
 ## The Design
 
-The system is a set of cooperating loops, not a single batch job.
+Having identified the assets and the threats to them, it is now possible to consider the safeguards. The system is best understood not as a single batch job but as a set of cooperating loops, each with a durable boundary, arranged as a security wheel of detection, avoidance, protection, and recovery. Detection is provided by ingestion-status records, dead-letter queues, and queue-age alarms; avoidance by a cheap validation gate that commits the rate budget only where new data exists; protection by bounded pagination, weighted queue preference, and reset-aware scheduling; and recovery by a durable last-processed position, retried stream writes, and replayable download requests. These safeguards are refined continually rather than fixed once.
 
-```text
-user refresh scheduler
-  -> candidate queue
-  -> refresh validator
-  -> tweet ingester queue
-  -> ECS tweet ingester
-  -> Kinesis tweet stream
-  -> last-tweet/status update Lambdas
+<Mermaid
+  title="The ingestion loops"
+  direction="TD"
+  chart={`
+flowchart TD
+  Refresh@{ icon: "igcse:target", form: "square", label: "Refresh scheduler", pos: "b" }
+  Validate@{ icon: "igcse:shield-check", form: "square", label: "Validate new, accessible data", pos: "b" }
+  NormalQ@{ icon: "igcse:message", form: "square", label: "Refresh queue", pos: "b" }
+  Backfill@{ icon: "igcse:target", form: "square", label: "Backfill scheduler", pos: "b" }
+  PriorityQ@{ icon: "igcse:message", form: "square", label: "Priority queue", pos: "b" }
+  Ingester@{ icon: "igcse:terminal", form: "square", label: "Autoscaling tweet ingester", pos: "b" }
+  Stream@{ icon: "igcse:message", form: "square", label: "Tweet stream", pos: "b" }
+  Downstream@{ icon: "igcse:text-search", form: "square", label: "Search, reporting, profiles", pos: "b" }
+  Position@{ icon: "igcse:database", form: "square", label: "Last-processed position", pos: "b" }
+  StatusLoop@{ icon: "igcse:target", form: "square", label: "Ingestion-status loop", pos: "b" }
+  StatusStore@{ icon: "igcse:database", form: "square", label: "Status records", pos: "b" }
 
-backfill scheduler
-  -> priority queue
-  -> same ECS tweet ingester
+  Refresh --> Validate --> NormalQ --> Ingester
+  Backfill --> PriorityQ --> Ingester
+  Ingester --> Stream --> Downstream
+  Ingester --> Position --> Refresh
+  Downstream --> StatusLoop --> StatusStore
+` }
+/>
 
-ingestion-status scheduler
-  -> status queue
-  -> Search API status updater
-  -> SQL status tables
-```
+The refresh loop begins with a scheduler that reads the oldest eligible accounts from SQL Server and places candidate identifiers onto an SQS queue in small batches. Before any expensive work is scheduled, a validator exercises avoidance directly: it asks whether an account's tweet count or most-recent post has changed since the last check, and whether the account is still accessible, and only then does it raise a download request. That single gate keeps the download workers focused upon accounts with new data instead of cycling through every account on every pass, which is the difference between spending the rate budget and wasting it.
 
-The refresh scheduler reads the oldest eligible accounts from SQL Server and pushes candidate IDs to SQS in batches of ten. The validator then asks a cheaper question before scheduling expensive work: has the account's tweet count or most-recent tweet changed since the last check, and is the account still accessible? Only then does it create a media download request. That small gate keeps the download workers focused on accounts with new data rather than cycling through every account on every pass.
+The tweet ingester is an autoscaling ECS task that scales up from zero whenever either queue holds work and back to zero when both drain, so that idle time costs nothing. It turns each download request into a bounded time window: where a request carries no explicit identifiers, synthetic boundary identifiers are generated from timestamps to cover the searchable retention window, and where the oldest and newest bounds are accidentally reversed, the ingester corrects them before calling the provider.
 
-### Pagination as a First-Class Concern
+<Mermaid
+  title="Bounded pagination and its continuation rule"
+  direction="TD"
+  chart={`
+flowchart TD
+  Request@{ icon: "igcse:message", form: "square", label: "Download request", pos: "b" }
+  Window@{ icon: "igcse:target", form: "square", label: "Synthetic time window", pos: "b" }
+  Download@{ icon: "igcse:terminal", form: "square", label: "Download within window", pos: "b" }
+  Parse@{ icon: "igcse:filter", form: "square", label: "Parse min and max identifiers", pos: "b" }
+  Push@{ icon: "igcse:message", form: "square", label: "Push tweets to the stream", pos: "b" }
+  More@{ icon: "igcse:target", form: "square", label: "History remains below the bound?", pos: "b" }
+  Requeue@{ icon: "igcse:message", form: "square", label: "Requeue with a lower max", pos: "b" }
+  Done@{ icon: "igcse:shield-check", form: "square", label: "Window complete", pos: "b" }
 
-The tweet ingester is an ECS task that scales from zero when either the normal queue or priority queue has work. Its processor turns a download request into a bounded time window: if the request has no explicit IDs, fake tweet IDs are generated from timestamps, normally covering the searchable retention window. If the caller accidentally reverses the oldest and newest IDs, the processor swaps them before calling the API.
+  Request --> Window --> Download --> Parse
+  Parse --> Push
+  Parse --> More
+  More -- "yes" --> Requeue --> Download
+  More -- "no" --> Done
+` }
+/>
 
-After each download, the parser calculates the minimum and maximum tweet IDs returned. If tweets were found and the minimum ID is still newer than the requested oldest ID, the ingester requeues the same user with a lower max ID. That continuation rule is the guardrail:
+Pagination is the part that was treated most carefully, because the platform's most damaging defect had lived there. After each download the ingester calculates the minimum and maximum identifiers returned; if tweets were found and the minimum is still newer than the requested lower bound, it requeues the same account with the upper bound lowered, and it repeats until the useful range is exhausted. Making that continuation rule explicit and verifiable is what surfaced the fault and restored the intended yield from 6.25% to 100% of each request.
 
-```text
-download window
-  -> parse min/max tweet IDs
-  -> push tweets to Kinesis
-  -> if more history remains, requeue with max = min - 1
-```
+Backfill is given urgency without being allowed to starve routine refresh. Missing history is tracked in its own state, and a scheduled task prepares the outstanding records and places their download requests onto a priority queue. The same ingester consumes both queues, attempting the priority queue roughly three times for each pass at the refresh queue, and falling back at once when the priority queue is empty. One ingestion path therefore serves both purposes, and the balance between them is a matter of configuration rather than a second system to build.
 
-The reason this was treated so carefully was hard-won: the yield-capping defect lived exactly here, and fixing this path restored the intended yield from 6.25% to 100%.
+Ingestion is also the boundary at which the provider's response is normalised into the single document shape the rest of the platform consumes. A retrieved response is split into per-tweet documents, only the relevant related records are attached, and each is converted into the internal shape. A quote or a retweet may point at a tweet absent from the response, so the ingester detects the missing references, looks them up, merges them back, and only then converts; a window that cannot be converted safely is skipped rather than allowed to poison the stream. That boundary is what keeps every downstream consumer insulated from changes in the provider response.
 
-### Priority Without Starvation
+The loops are operated as carefully as they are designed. Queues carry dead-letter queues and age alarms; the ingester scales to the depth of its work and to zero beyond it; the scheduler recognises rate-limit responses and waits until the provider's reset time before resuming; Kinesis writes are batched and failed records retried; and the last processed identifier is stored for each account so that the next refresh has a clean starting point. The ingestion-status loop is kept separate because it depends upon the search surface rather than the provider: a scheduler can enqueue hundreds of thousands of identifiers, parallelising the enqueue with TPL Dataflow, while the updater deliberately processes one identifier per invocation and caps its concurrency so that the search ceiling is never breached.
 
-Backfill candidates are tracked in their own state table. A scheduled Lambda prepares missing backfill records, evaluates which users need work, and pushes download requests to a priority queue. The same ECS ingester consumes both queues, using a configurable preference for the priority queue: by default, it attempts the priority queue three times before returning to the normal queue. If the priority queue is empty, it immediately falls back to normal refresh.
-
-### Migrating to v2 Without Breaking Consumers
-
-Twitter v2 changed the shape of tweet data — `data`, `includes`, expansions, referenced tweets, media, polls, places and errors spread across related collections. Downstream systems still expected the older v1-style status document, so the parser package became the compatibility layer: it splits a v2 response into per-tweet documents, attaches only the relevant includes, and converts each into the older status model with v2-only fields preserved under an extension object.
-
-One subtle problem was missing referenced tweets. A quote or retweet can point at a tweet that is not present in the original includes collection. The ingester detects those references, performs a lookup for the missing IDs, merges the result back into the response, and only then runs conversion. If a response cannot be safely converted, that user window is skipped rather than poisoning the stream.
-
-### Operating the Pipeline
-
-SQS queues have dead-letter queues and age alarms. The ECS services scale out when queues contain messages and scale back to zero when they drain. The queue scheduler understands rate-limit exceptions and waits until the provider reset time before resuming. Kinesis writes are batched, failed records are retried, and the last-tweet updater stores the newest processed tweet ID per user so the next refresh has a clean starting point.
-
-The ingestion status loop runs separately because it depends on the search surface. A scheduler can enqueue hundreds of thousands of Twitter IDs, using TPL Dataflow to parallelize SQS batch sends. The updater deliberately processes one ID at a time per Lambda invocation and caps concurrency because the Search API has its own ceiling.
+The result is an ingestion platform shaped around its risks. It identifies the assets that must stay fresh and traceable, spends a finite rate budget only where new data exists, bounds and verifies every page of every download, keeps backfill fast without starving refresh, and normalises the provider response at a single boundary so that the rest of the platform, and everything its users depend upon, is never disturbed by how Twitter happens to answer on any given day.

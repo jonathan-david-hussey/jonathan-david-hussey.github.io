@@ -1,86 +1,163 @@
 ---
-title: 'Keeping an R&D Portal and SAP in Agreement, Both Ways'
-description: 'A durable, event-driven synchronisation layer between an internal governance platform and SAP: six inbound OData feeds, outbound project reconciliation, and an audit ledger for every run.'
+title: 'A Risk-Led SAP Synchronisation Model for an R&D Governance Portal'
+description: 'A .NET 9 synchronisation layer that protects the agreement between an internal R&D governance portal and SAP through durable messaging, OData refreshes, outbound project reconciliation, and an auditable ledger for every run.'
 category: 'case-studies'
-tags: ['C#', '.NET 9', 'Wolverine', 'Hangfire', 'EF Core', 'SQL Server', 'SAP OData', 'Polly']
+tags:
+  [
+    'C#',
+    '.NET 9',
+    'ASP.NET Core',
+    'Wolverine',
+    'Hangfire',
+    'EF Core',
+    'SQL Server',
+    'SAP OData',
+    'OData v2',
+    'Durable Messaging',
+    'Integration Architecture',
+    'Audit Trail',
+    'Retry Policies',
+    'Polly',
+    'Claude Code',
+    'OpenAI Codex',
+    'Github Copilot',
+    'Observer Pattern',
+    'Template Method Pattern',
+    'Strategy Pattern',
+    'Adapter Pattern',
+    'State Pattern',
+    'Repository Pattern',
+    'Unit of Work Pattern'
+  ]
+aiAssisted: true
+reviewed: true
 order: 1
 role: 'Software Architect'
-dates: '2025 – 2026'
-roleSummary: 'Architect and lead implementer — I designed the synchronisation architecture, built the pipeline and its audit model, and set the conventions the team extends it with.'
+dates: '2025 - 2026'
+roleSummary: 'I designed and implemented the SAP synchronisation model: the global refresh orchestration, the Wolverine-backed event pipeline, the reusable inbound refresh pattern, the outbound project reconciliation service, and the sync ledger used to diagnose each run.'
 metrics:
-  - '7 SAP domains synchronised'
-  - 'Bidirectional: 6 inbound feeds + outbound reconciliation'
-  - 'Every run auditable: request, response, status, attempts'
+  - '6 SAP domains synchronised: Orders, Accounts, Centres, Financials, Employee Costs, and Projects'
+  - '5 inbound SAP OData feeds refresh local reference and finance data through one reusable paging, mapping, and upsert pattern'
+  - '1 outbound reconciliation path keeps approved portal projects aligned with SAP through create and update calls'
+  - 'Every global run creates per-entity ledger and log records with status, correlation id, attempts, request JSON, response data, and error details'
 decisions:
-  - title: 'Dumb scheduler, durable pipeline'
-    detail: 'Hangfire only publishes an event; Wolverine executes. The manual button and the nightly job share every downstream handler, and a mid-sync crash resumes rather than restarts.'
-    tradeoff: 'One more moving part in the architecture.'
-  - title: 'A ledger row per entity per run, not a shared log'
-    detail: '"Did the sync work?" became a query with the request and response attached — auditable by anyone with read access, not just whoever can grep logs.'
-    tradeoff: 'More tables and more writes per run.'
-  - title: 'Upsert, never delete, on inbound feeds'
-    detail: 'A bad SAP response can never mass-delete local finance data.'
-    tradeoff: 'The mirror can retain rows SAP has dropped — safety was worth the drift risk.'
-  - title: 'A deliberately uniform inbound pattern'
-    detail: 'Adding the seventh entity cost a client, a mapper, a match key and one line in the fan-out list — a checklist, not a design exercise.'
-    tradeoff: 'Per-entity optimisation was sacrificed for consistency.'
-  - title: 'Workflow-completion sync bypasses the ledger'
-    detail: 'Immediate outbound sync after approval puts a project into SAP moments after the final signature; the nightly run still records that entity''s ledger row.'
-    tradeoff: 'Bookkeeping traded for speed — a documented exception rather than an accidental one.'
+  - title: 'Treat synchronisation as a risk-control system'
+    detail: 'The design starts from the assets at risk: finance reference data, project identifiers, workflow state, SAP responses, and the evidence needed to prove what happened during a run. Each part of the pipeline exists to protect one of those assets from silent drift.'
+    tradeoff: 'The system carries more audit data and status transitions than a simple scheduled import, but it gives finance and engineering a shared record of the integration.'
+  - title: 'Use Hangfire for scheduling and Wolverine for execution'
+    detail: 'Hangfire owns the nightly recurring job and operator dashboard, while the job itself only publishes a global refresh event. Wolverine then runs the durable, SQL-backed message flow that fans out the work and records each entity result.'
+    tradeoff: 'There are two runtime subsystems to configure, but the scheduler never becomes responsible for SAP business logic.'
+  - title: 'Create one ledger row per entity per run'
+    detail: 'A global refresh handler creates a pending ledger row and an initial log entry for each synchronised entity under the same correlation id before any SAP call is made.'
+    tradeoff: 'A global refresh produces more database writes, but failed, retried, and completed entities become queryable rather than hidden inside process logs.'
+  - title: 'Standardise inbound SAP feeds around upsert-only refreshes'
+    detail: 'Orders, accounts, Centres, Financial, and Employees all pass through the same shape: OData client, response model, mapper, repository match key, paged refresh service, and process handler.'
+    tradeoff: 'The pattern is intentionally uniform, so unusual entity-specific optimisations are secondary to repeatability and safety.'
+  - title: 'Reconcile projects outbound after workflow completion'
+    detail: 'Projects flow from the portal to SAP. The reconciliation service loads current SAP projects, compares them with approved local project records, creates missing projects, and updates changed status or names. Workflow completion emits an immediate project sync event so the nightly run is not the only route.'
+    tradeoff: 'The immediate workflow-triggered path favours operational timeliness over waiting for the fully global batch cycle.'
 outcome:
-  - 'Seven SAP domains synchronise without human involvement — six inbound feeds refreshed nightly or on demand, plus outbound project reconciliation.'
-  - 'A newly approved project appears in SAP moments after its final signature.'
-  - 'Every run leaves an audit trail of what was requested, what came back, how many attempts it took and how it ended.'
-  - 'Failures land in the platform''s normalised error pipeline instead of dying silently.'
-lessons: 'The interesting decisions here weren''t about SAP; they were about failure. Making the scheduler dumb and the pipeline durable means a mid-sync crash resumes rather than restarts. Making every run write its own audit trail turned "did the sync work?" from a log-diving expedition into a table query. And making the inbound pattern boringly uniform meant the seventh entity cost a fraction of the first.'
+  - 'Finance reference data can be refreshed nightly or on demand without separate code paths for the button and the scheduled job.'
+  - 'Approved R&D portal projects are reconciled back into SAP rather than being manually re-keyed after governance completion.'
+  - 'Failures are visible as entity-level status changes with request, attempts, error, stack trace, and correlation data attached.'
+  - 'Adding another inbound SAP entity becomes a checklist: response model, client, mapper, repository key, refresh service, events, handlers, and fan-out registration.'
+lessons: 'The main problem was not merely how to call SAP. The risk was that critical finance and project data could drift without a reliable record of when, where, and why. The useful safeguard was therefore an explicit model: identify the assets, isolate the entry points, make execution durable, upsert rather than delete, record every state transition, and keep recovery close to the same path as normal operation.'
 ---
 
 ## Context
 
-An internal R&D governance platform needed to agree with SAP about money and people: internal orders, GL accounts, profit centres, cost centres, utilization and manpower figures all live in SAP, while project records originate in the portal. Before this work, that agreement was manual. Finance data went stale, and newly approved projects had to be keyed into SAP by hand.
+The R&D governance portal is the place where project requests, approvals, and operational governance are carried out. SAP is the place where financial and organisational reference data is maintained. The system therefore contains two classes of assets that have to remain in agreement: SAP-owned finance data flowing into the portal, and portal-owned project records flowing back to SAP.
+
+The important assets were not only the records themselves. Orders, Accounts, Centres, Financial figures, Employee figures, project codes, project status, SAP payloads, workflow completion events, and audit evidence all form part of the operational system. If any of these assets becomes stale, corrupted, or untraceable, the result is a business-continuity problem rather than a narrow technical defect.
+
+Before this work, agreement between the systems depended on manual intervention. Finance reference data could become stale in the portal, and a project that had passed through governance still required manual re-entry before SAP reflected it. The objective was to implement a synchronisation model that could be triggered both routinely and deliberately, and that would leave enough evidence behind to understand each run after the fact.
 
 ## The Problem
 
-Replace the manual process with a synchronisation layer that finance staff can trust and engineers can extend — where a failed sync is visible, diagnosable and recoverable, not silent.
+The central threat was data drift between the governance portal and SAP. This manifested in several ways: reference data could be old, project records could be absent from SAP after approval, SAP failures could disappear into application logs, and retry behaviour could make it difficult to determine whether a failed run had stopped permanently or was still being recovered.
+
+The problem was therefore not simply "integrate with SAP." The system needed to protect the integrity and availability of finance and project data while making synchronisation failures diagnosable. A successful design had to determine what was sent, what SAP returned, which entity failed, whether the message would be retried, and whether the final status represented completion, recoverable error, or permanent failure.
+
+The risk analysis led to one practical conclusion: silent failure was more dangerous than visible incompletion. A partial run that clearly identifies the failed entity can be recovered; an apparently successful process that leaves no audit trail cannot be trusted.
 
 ## Constraints
 
-- **Two triggers, one behaviour.** Finance wanted a nightly refresh, but users needed an on-demand button — and both had to run exactly the same logic.
-- **Auditable by non-engineers.** A failed sync couldn't just vanish into a log file; someone had to be able to answer "did last night's refresh run, what did it send, and what came back?"
-- **SAP's OData v2 quirks.** Paged responses, CSRF tokens on mutating calls, and no natural keys on several entities.
-- **Asymmetry.** Six domains flow *from* SAP into the portal; projects flow *out* of the portal into SAP — one pipeline had to carry both directions.
+- **Two triggers, one behaviour.** The nightly refresh and the manual refresh button had to enter the same execution path so that operational and user-initiated runs could not diverge.
+- **Bidirectional responsibility.** Six domains flow from SAP into the portal, while projects flow from the portal into SAP after governance approval.
+- **SAP OData v2 behaviour.** Clients had to manage JSON-formatted responses, server-reported total counts, page-size and offset paging, optional date filters, mutating requests, and CSRF token acquisition.
+- **Durable execution.** A process crash or transient SAP failure should not force a human to guess which entity completed and which one needs retrying.
+- **Auditable evidence.** The platform needed entity-level status, attempts, request JSON, response data, correlation id, and error details.
+- **Safe local persistence.** Inbound feeds had to refresh and upsert data without using a bad SAP response as a reason to mass-delete local finance data.
+- **Extensibility.** New SAP entities had to be added through a consistent pattern rather than through a fresh integration design each time.
 
 ## The Design
 
-One pipeline, two triggers. A Hangfire recurring job fires nightly and a `POST /sync/refresh` endpoint serves the button — both do nothing except publish the same `GlobalRefreshEvent`. Hangfire stays a scheduler and operator dashboard; it knows nothing about SAP. All actual work happens in Wolverine's durable, SQL-backed message pipeline.
+The design can be understood as a safeguard model around detection, protection, and recovery. Detection comes from explicit ledger and log records. Protection comes from durable events, SAP client boundaries, retry policies, and upsert-only inbound persistence. Recovery comes from status-aware handlers that distinguish queued work, in-progress work, retryable error, permanent failure, and completion.
 
-```text
-Hangfire (nightly)  ─┐
-                     ├─> GlobalRefreshEvent
-Manual API trigger ──┘        │
-                              ▼
-                    GlobalRefreshHandler
-              one sync ledger row per entity
-                              │
-              StartRefreshEvent  (fan-out)
-                              │
-          per-entity ProcessRefresh handlers
-                              │
-        SAP client → mapping → bulk upsert
-                              │
-                    RefreshCompletedEvent
-```
+<Mermaid
+  title="High-level synchronisation model"
+  direction="TD"
+  chart={`
+flowchart TD
+  Manual@{ icon: "igcse:terminal", form: "square", label: "Manual refresh API", pos: "b" }
+  Schedule@{ icon: "igcse:target", form: "square", label: "Hangfire nightly job", pos: "b" }
+  Global@{ icon: "igcse:message", form: "square", label: "Global refresh event", pos: "b" }
+  Ledger@{ icon: "igcse:database", form: "square", label: "Per-entity ledger rows", pos: "b" }
+  Start@{ icon: "igcse:message", form: "square", label: "Start refresh fan-out", pos: "b" }
+  Inbound@{ icon: "igcse:database", form: "square", label: "Inbound SAP OData feeds", pos: "b" }
+  Projects@{ icon: "igcse:file-link", form: "square", label: "Outbound project reconciliation", pos: "b" }
+  Complete@{ icon: "igcse:shield-check", form: "square", label: "Refresh completed event", pos: "b" }
+  Errors@{ icon: "igcse:file-document", form: "square", label: "Application error pipeline", pos: "b" }
 
-The fan-out point creates one ledger row per entity, each seeded `Pending`. Per-entity start handlers mark their row `Queued` and emit a process event; process handlers mark it `InProgress`, capture the serialized request, call the refresh service, and finish by recording either a completion (with the full response serialized alongside) or an error. Failure classification is retry-aware: the handler reads Wolverine's envelope attempt count and distinguishes "errored, will retry" from "failed, gave up".
+  Manual --> Global
+  Schedule --> Global
+  Global --> Ledger --> Start
+  Start --> Inbound --> Complete
+  Start --> Projects --> Complete
+  Inbound --> Errors
+  Projects --> Errors
+  Complete --> Ledger
+  Errors --> Ledger
+` }
+/>
 
-### Inbound: Six Feeds, One Pattern
+A global refresh has two entry points. A sync API endpoint handles the manual refresh button, while a Hangfire recurring job covers the nightly run. Both entry points publish the same global refresh event, so the behaviour after triggering is identical. Hangfire remains a scheduler and dashboard; it does not contain the SAP workflow.
 
-Every inbound entity follows the same four-part pattern — an OData client, a `ToEntity()` mapping extension, a bulk-upsert repository, and a paging refresh service. The base client handles OData v2 mechanics (`$format`, `$inlinecount`, `$top`/`$skip`); the base service pages through results a hundred at a time using the server-reported count; the base repository bulk-upserts with per-entity match keys — order number for internal orders, account-plus-company-code for GL accounts, hashed composite IDs where SAP has no natural key (utilization rows hash eight fields).
+The global refresh handler then establishes the audit boundary. It creates one ledger row per entity (Financial, Accounts, Orders, Centres, Employees, and Projects), all under a single correlation id. Each row begins as pending with an initial log entry. Only after that evidence exists does the handler emit a start refresh event.
 
-Cross-cutting concerns live in one place. A delegating handler on every SAP HTTP client deals with basic auth, content negotiation and — the part nobody wants to write twice — CSRF token acquisition for mutating calls. Resilience (exponential retry with jitter) is applied at client registration, not sprinkled through business code.
+Each entity has a small start handler derived from the same base class. The start handler finds the pending ledger row for its entity, records that the entity has entered the queued stage, and emits the entity-specific process event. The process handler then marks the row as in progress, stores the serialized refresh request, records how many delivery attempts the message has taken, calls the refresh service, and emits a refresh completed event when the entity succeeds.
 
-### Outbound: Projects Flow the Other Way
+<Mermaid
+  title="Entity refresh state path"
+  direction="TD"
+  chart={`
+flowchart TD
+  Pending@{ icon: "igcse:file-document", form: "square", label: "Pending ledger row", pos: "b" }
+  Queued@{ icon: "igcse:message", form: "square", label: "Queued by start handler", pos: "b" }
+  Running@{ icon: "igcse:terminal", form: "square", label: "In progress with request JSON", pos: "b" }
+  Service@{ icon: "igcse:database", form: "square", label: "SAP refresh service", pos: "b" }
+  Success@{ icon: "igcse:shield-check", form: "square", label: "Completed with result", pos: "b" }
+  Retry@{ icon: "igcse:filter", form: "square", label: "Error and retry metadata", pos: "b" }
+  Failed@{ icon: "igcse:file-document", form: "square", label: "Failed after retry limit", pos: "b" }
 
-Projects invert the pattern. The portal is the source of truth — projects are born there through a governed approval workflow — so the sync *reconciles SAP against the portal*: load the current SAP project list, compare against locally approved projects, `POST` the missing ones, `PUT` the changed ones.
+  Pending --> Queued --> Running --> Service
+  Service --> Success
+  Service --> Retry
+  Retry --> Running
+  Retry --> Failed
+` }
+/>
 
-There are two ways into this path. The nightly global refresh includes projects like any other entity. But when a project's approval workflow completes, the workflow's completion handler also emits an immediate sync event — so a newly approved project appears in SAP within moments of the final signature, without waiting for the night run.
+The inbound refreshes are deliberately uniform. A shared SAP client builds OData v2 requests with JSON formatting, server-reported total counts, page size, skip values, and entity-specific filters where needed. A shared refresh service reads the first page, calculates total pages, then continues paging through SAP responses with a default batch size of 100. Repositories map SAP response models into local entities and upsert by entity-specific keys. For example, Financial records use a composite identifier, while other finance entities use their own stable match keys.
+
+This is the key safeguard for incoming data. The local database is refreshed by update and insert, not by deletion. If SAP returns an empty or partial response, the result is a visible refresh outcome rather than a destructive local purge.
+
+The SAP client boundary also contains integration-specific controls. A delegating handler adds basic authentication to every request, sets the appropriate accept headers, and fetches a CSRF token from SAP metadata before any mutating create or update call. That keeps a repeated OData concern in one place instead of duplicating it across entity clients.
+
+Projects follow the opposite direction. The project reconciliation service loads the current SAP project list, loads local portal projects with valid project identifiers, maps local overall statuses into SAP active or inactive states, and then reconciles the two sides. Missing SAP projects are created; changed project names or statuses are updated. The SAP project client also trims project names to the SAP length boundary before create or update calls.
+
+Workflow completion is treated as an operational trigger. When the workflow completion handler validates a completed workflow instance, it emits a project sync event alongside the workflow notification event. That means a newly approved project can be reconciled to SAP immediately, while the same project entity also remains part of the wider global refresh model.
+
+Durability is provided by Wolverine rather than by hand-rolled background code. The application persists its messages in SQL Server, uses durable inbox and outbox policies, applies Entity Framework Core transactions, and keeps local queues for start, completion, workflow email, and application error events sequential where ordering matters. Retry behaviour uses configured Wolverine retry counts and jittered cooldowns; the process handler records whether an exception is still a recoverable error or has become a final failed state after the retry limit.
+
+The result is a synchronisation layer with a clear risk response. The system identifies the assets that can drift, creates audit records before work starts, isolates SAP mechanics behind shared clients, uses a repeatable pattern for inbound reference data, handles project reconciliation as a special outbound case, and turns every run into a recoverable sequence of statuses rather than an opaque scheduled task.

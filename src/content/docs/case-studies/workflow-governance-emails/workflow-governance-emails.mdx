@@ -1,87 +1,155 @@
 ---
-title: 'Governance Approvals That Never Lose an Email'
-description: 'An event-driven approval workflow built on a finite state machine, where notification emails are selected from database-mapped templates, rendered with Fluid, dispatched through durable queues, and audited like everything else.'
+title: 'A Threat-Led Notification Model for an R&D Governance Portal'
+description: 'A .NET 9 notification model that protects governance approval communication by selecting emails from persisted workflow history, rendering them through Fluid templates, dispatching them over durable Wolverine queues, and preserving every production send as auditable notification evidence.'
 category: 'case-studies'
-tags: ['C#', '.NET 9', 'Wolverine', 'Fluid', 'MailKit', 'EF Core', 'SQL Server']
+tags:
+  [
+    'C#',
+    '.NET 9',
+    'ASP.NET Core',
+    'Wolverine',
+    'Wolverine HTTP',
+    'Fluid',
+    'MailKit',
+    'SMTP',
+    'EF Core',
+    'SQL Server',
+    'Workflow Engine',
+    'Email Templates',
+    'Audit Trail',
+    'Durable Messaging',
+    'Strategy Pattern',
+    'Builder Pattern',
+    'Observer Pattern',
+    'State Pattern',
+  ]
 order: 2
+reviewed: true
 role: 'Software Architect'
-dates: '2025 – 2026'
-roleSummary: 'Architect and lead implementer of the workflow engine and its notification pipeline, from the state-machine design through the operational replay tooling.'
+dates: '2025 - 2026'
+roleSummary: 'I designed and implemented the workflow notification model: history-led template selection, database-mapped email routing, safe Fluid rendering, durable send events, SMTP dispatch, per-recipient notification evidence, non-production test routing, and normalised workflow error handling.'
 metrics:
-  - 'Every transition, notification and error persisted as an audit row'
-  - '7 email template types mapped in data, not code'
-  - 'Stuck workflows recoverable through replay endpoints'
+  - '7 workflow email outcomes supported: created, rejected, approved, request for change, request for change updated, completed, and a finance handoff on project creation'
+  - 'Every production send persists the serialized email payload plus a notification activity row for each To and Cc recipient'
+  - 'Wolverine HTTP endpoints expose guarded replay paths for the approved, rejected, request-for-change, notification, send, completed, and error stages'
+  - 'Non-production routing redirects the whole pipeline to a configured test address so rendering and SMTP run without contacting real approvers'
 decisions:
-  - title: 'Route from history, not status'
-    detail: 'Transition routing reads the latest persisted action activity instead of the instance''s headline status, so any transition can be replayed because its input still exists.'
-    tradeoff: 'Slightly more indirection than trusting the status field.'
-  - title: 'Thin commands, asynchronous everything else'
-    detail: 'Users get fast responses and nothing depends on SMTP being up mid-request; a crash means redelivery instead of loss.'
-    tradeoff: 'Eventual consistency between "approved" and "notified" — made visible by the audit trail rather than mysterious.'
-  - title: 'Templates mapped in data over a code switch'
-    detail: 'Workflow type plus action status resolves to a parent layout and child content template in the database; adding or retargeting a notification is a data change, not a deployment.'
-    tradeoff: 'Lost compile-time exhaustiveness checking.'
-  - title: 'A sequential send queue'
-    detail: 'Email ordering is preserved and the mail server never sees interleaved bursts — governance email is low-volume and high-consequence.'
-    tradeoff: 'Throughput deliberately capped; ordering beats parallelism here.'
-  - title: 'Replay endpoints over database surgery'
-    detail: 'Every pipeline stage is exposed as a guarded Wolverine HTTP endpoint with a documented replay order, so recovery uses the production code path.'
-    tradeoff: 'Exposing internal stages carries risk — mitigated by guarding and documentation.'
+  - title: 'Select every notification from persisted workflow history'
+    detail: 'Template selection reads the latest workflow activity whose state marks a user action, then matches its workflow status and activity status against the email template mappings, so the email is derived from the same durable state model as the workflow itself.'
+    tradeoff: 'The selector has to load the workflow, its template mappings, and its activity history, but a notification can be rebuilt from durable evidence rather than from a transient controller branch.'
+  - title: 'Separate notification construction from SMTP delivery'
+    detail: 'A notification handler builds one or more email messages and publishes a send-email event for each; the send handler owns validation, SMTP dispatch, and persistence of notification evidence.'
+    tradeoff: 'Users see eventual notification completion, but the workflow request is never held hostage by template rendering or mail-server availability.'
+  - title: 'Keep templates data-driven and render them safely'
+    detail: 'Workflow type and action status resolve to parent and child template records, and Fluid rendering registers only the known workflow context models plus a small set of controlled filters, such as one that joins approver names into a readable list.'
+    tradeoff: 'There is less compile-time certainty than hard-coded email bodies, but business-owned wording and routing can change without redeploying workflow handlers, and templates never gain arbitrary code execution.'
+  - title: 'Validate every outbound message before it reaches SMTP'
+    detail: 'The send handler rejects null messages, empty recipient lists, blank subjects, and blank bodies by emitting a workflow error event instead of attempting a malformed SMTP call.'
+    tradeoff: 'Some failures surface later in the asynchronous pipeline, but they are normalised into the same workflow error path rather than leaving a half-sent notification.'
+  - title: 'Audit real sends, redirect test sends'
+    detail: 'Production sends create a notification record and a notification activity row for each To and Cc recipient, while a configured test address redirects lower-environment mail so it cannot pollute production-style notification evidence.'
+    tradeoff: 'Test-address runs prove the rendering and SMTP path, but they intentionally do not claim that a real approver was notified.'
 outcome:
-  - 'Every approval email is either provably delivered or provably failed — the serialized payload and a notification activity row exist for each send.'
-  - 'Operators recover stuck workflows with a single replay call instead of database edits.'
-  - 'Non-production environments exercise the full pipeline without emailing real approvers.'
-  - 'New notification types have shipped as data changes with no code deployment.'
-lessons: 'Treat notifications as first-class domain events — durable, audited, data-driven — rather than side effects. The same architecture that guarantees delivery also produced the operational story: because every decision reads from persisted history, any step can be replayed, and because every send leaves a record, every "did they get it?" has an answer.'
+  - 'Approval notifications became recoverable workflow events instead of best-effort side effects buried inside request handlers.'
+  - 'Operators can answer who was notified, which template type was used, and what serialized email payload was sent.'
+  - 'Request-for-change loops preserve the approval stage while moving responsibility between the approver and the initiator according to persisted activity state.'
+  - 'Application errors flow through a normalised path that marks the workflow with an error state, writes an error activity, and emits an application error event with correlation metadata.'
+lessons: 'The asset worth protecting in a governance email system is not the email itself. It is the ability to prove why a notification was selected, who it targeted, what it contained, whether it was sent, and how the workflow recovered when a step failed. Persisted activity history, durable delivery, template validation, and explicit notification records are the safeguards that turn email from an unreliable side effect into part of the governance control model.'
 ---
 
 ## Context
 
-Project governance at a research institute runs on multi-step approvals: a project proposal moves through an ordered chain of approvers, any of whom can approve, reject, or send it back for changes. Each of those moments needs the right people told, by email, reliably — the initiator when their proposal advances, the next approver when it lands on their desk, finance when a project is created.
+The R&D governance portal exists to carry ordered approval decisions. A project proposal is raised by an initiator and moves through a configured chain of approvers, and at every stage the platform has to direct attention to the one person expected to act next. Approval, rejection, request for change, update after change, completion, and the finance handoff are communication events as much as they are workflow events.
+
+The assets that keep this activity trustworthy are therefore broader than the email body. The workflow instance, its activity stream, the current approver, the initiator, the approver chain, the email templates, the rendered subject and HTML body, the recipient list, the SMTP configuration, the correlation id, and the notification audit record all contribute to business continuity. If any one of these assets is incomplete or untraceable, the organisation can no longer prove that a governance action reached the person who was expected to act on it.
+
+That reframing is what makes notification reliability a governance concern rather than a cosmetic messaging feature. The design had to guarantee that emails were selected from the same state model as the workflow, sent outside the user request path, and preserved as evidence whenever they mattered.
 
 ## The Problem
 
-Email is where systems like this usually rot. Notifications get sent inline from controller code, fail silently when SMTP hiccups, and nobody can say afterwards whether the approver was ever actually told. The design goal was blunt: **no lost emails, and proof either way.**
+The central threat was silent communication failure during approval governance. If an approver is never notified, a workflow stalls. If the wrong recipient is notified, confidentiality and accountability are both affected. If an email is sent but no record is kept, the platform cannot say whether a delay was caused by the system, the recipient, or an upstream workflow issue.
+
+Two common implementation choices are themselves vulnerabilities. Sending SMTP inline from the request that updates workflow state can fail halfway, leaving a changed database row and no reliable notification history behind it. A hard-coded template switch is a second weakness: business-owned wording and routing rules become entangled with deployment cycles, so a copy change waits on a release.
+
+The risk analysis pointed to one conclusion. A visible, incomplete notification can be diagnosed and replayed; an apparently successful send that leaves no evidence cannot be trusted at all. The system therefore needed a notification model in which every communication could be traced back to a persisted workflow activity, rendered from configured templates, dispatched through durable infrastructure, and recorded after a real production send.
 
 ## Constraints
 
-- **Ordered, multi-stage approval chains** where the current approver changes as the workflow advances.
-- **A request-for-change loop** that bounces between approver and initiator without moving backward through the chain.
-- **Template content owned by the business**, not hardcoded — seven notification types and counting.
-- **Non-production safety.** Staging must be able to exercise the full pipeline without ever emailing a real executive.
+- **Ordered approval stages.** The current approver changes as the workflow advances, so a notification has to follow the active stage rather than a static recipient list.
+- **Request-for-change loops.** A request for change moves responsibility to the initiator and then back to the same approver after updates, without walking the workflow backward through the approver chain.
+- **Template governance.** Seven workflow email outcomes had to be mapped through data records rather than embedded as controller-level conditionals.
+- **Asynchronous failure.** Rendering, recipient lookup, SMTP delivery, and persistence can each fail independently after the user's action has already returned.
+- **Replay and diagnosis.** Operators needed a safe way to replay a stage after data correction or a transient failure, using the same handlers as normal production flow.
+- **Non-production safety.** Lower environments had to exercise template rendering and SMTP dispatch without emailing real executives or recording misleading production-style notification proof.
 
 ## The Design
 
-### A State Machine That Leaves Footprints
+The design can be read as a safeguard model around detection, protection, and recovery, built on one durable boundary: the workflow activity stream. That stream records user actions, transitions, notifications, and errors, and the notification model treats it as the evidence from which email routing is derived. Detection comes from those persisted activities and the notification records written after a real send; protection comes from history-led selection, safe Fluid rendering, message validation, and the durable Wolverine boundary that keeps sending out of the request path; recovery comes from a single normalised error route and guarded replay endpoints that reuse the production handlers.
 
-The engine is a finite state machine persisted in SQL Server. A workflow instance carries a headline status (`Submitted`, `Approved`, `RequestForChange`, `Completed`, `Rejected`, `Error`), but the real source of truth is the activity stream: every action, transition, notification and error writes an immutable activity row against the instance.
+<Mermaid
+  title="High-level notification model"
+  direction="TD"
+  chart={`
+flowchart TD
+  Action@{ icon: "igcse:terminal", form: "square", label: "Workflow action endpoint", pos: "b" }
+  Activity@{ icon: "igcse:file-document", form: "square", label: "Persist action activity", pos: "b" }
+  Event@{ icon: "igcse:message", form: "square", label: "Workflow event", pos: "b" }
+  Selector@{ icon: "igcse:filter", form: "square", label: "Template selector from latest action", pos: "b" }
+  Builder@{ icon: "igcse:file-link", form: "square", label: "Outcome-specific email builder", pos: "b" }
+  Fluid@{ icon: "igcse:text-search", form: "square", label: "Fluid render service", pos: "b" }
+  SendEvent@{ icon: "igcse:message", form: "square", label: "Send email event", pos: "b" }
+  Smtp@{ icon: "igcse:terminal", form: "square", label: "SMTP dispatch", pos: "b" }
+  Audit@{ icon: "igcse:database", form: "square", label: "Notification and activity records", pos: "b" }
+  Error@{ icon: "igcse:file-document", form: "square", label: "Workflow error event", pos: "b" }
 
-That choice earns its keep in the transition handler. Rather than trusting the instance's headline status, routing inspects the *latest action activity* and dispatches from that — which makes transitions replayable, because the decision input is durable history rather than mutable state.
+  Action --> Activity --> Event --> Selector --> Builder --> Fluid --> SendEvent --> Smtp --> Audit
+  Selector --> Error
+  Builder --> Error
+  Fluid --> Error
+  SendEvent --> Error
+  Smtp --> Error
+` }
+/>
 
-Commands are deliberately thin: the HTTP endpoint writes the immediate state change to the database, publishes an event to Wolverine's durable, SQL-backed queues, and returns. Everything that can be slow or can fail — advancing approvers, building emails, talking to SMTP, syncing to SAP on completion — happens asynchronously behind the inbox/outbox.
+The user-facing workflow command stays deliberately thin. Approval, rejection, and request-for-change actions update the immediate workflow facts and publish events into Wolverine. The slower, more failure-prone concerns (deciding the next transition, selecting notification types, rendering email, and talking to SMTP) happen behind durable message handling, where a fault can be retried or surfaced rather than lost.
 
-The request-for-change loop was the subtle part. When an approver asks for changes, the workflow must bounce to the initiator and back *without moving backward through the approval chain*. The stage stays put; the latest action activity (`RequestForChange` vs `Updated`) decides whether the next pending task — and the next email — belongs to the initiator or the approver.
+Template selection is history-led by design. The template selector loads the workflow instance together with its workflow definition, its email template mappings, and its activity stream. It then finds the most recent action activity and matches that action's workflow status and activity status against the email template mapping. The selected child template types are the notification outcomes that should be built: an approval, a completion, or a finance handoff on project creation, for example. Because the notification is derived from the persisted activity that caused it, a stage can be regenerated long after the original request state has disappeared. This is the property that makes replay safe.
 
-### Emails as Data, Not Code
+<Mermaid
+  title="Template selection and send path"
+  direction="TD"
+  chart={`
+flowchart TD
+  Instance@{ icon: "igcse:database", form: "square", label: "Workflow instance", pos: "b" }
+  History@{ icon: "igcse:file-document", form: "square", label: "Activities", pos: "b" }
+  Mapping@{ icon: "igcse:filter", form: "square", label: "Workflow email mappings", pos: "b" }
+  Types@{ icon: "igcse:fingerprint", form: "square", label: "Child template types", pos: "b" }
+  Messages@{ icon: "igcse:file-document", form: "square", label: "Email message list", pos: "b" }
+  Validate@{ icon: "igcse:shield-check", form: "square", label: "Validate To, subject, body", pos: "b" }
+  Test@{ icon: "igcse:target", form: "square", label: "Test address configured?", pos: "b" }
+  RealAudit@{ icon: "igcse:database", form: "square", label: "Persist notification evidence", pos: "b" }
+  Redirect@{ icon: "igcse:filter", form: "square", label: "Redirect to test mailbox", pos: "b" }
 
-Which email goes out is a database mapping, not a switch statement buried in a handler: workflow type plus action status resolves to a **parent template** (the shared layout shell) and a **child template** (the situational content — created, approved, rejected, request-for-change, change-updated, completed, and a finance-specific variant for new projects).
+  Instance --> History
+  Instance --> Mapping
+  History --> Types
+  Mapping --> Types
+  Types --> Messages --> Validate --> Test
+  Test -- "no" --> RealAudit
+  Test -- "yes" --> Redirect
+` }
+/>
 
-The notification handler selects the applicable template types, dedicated builders assemble each message (recipients resolved from the approver chain, model built from workflow state), and templates render through Fluid — safe Liquid templating, so content editors can't execute code. Sending is the last, most isolated step:
+The email builder acts as the dispatcher from a selected template type to the builder that owns it. The supported outcomes are created, rejected, approved, request for change, request for change updated, completed, and a project-created finance handoff. Dedicated builders keep recipient and model construction close to each workflow scenario, while the shared email message carries the common output: workflow instance id, To, Cc, Bcc, subject, body, and child template type.
 
-```text
-transition event
-  → notification handler        (which templates apply?)
-  → per-outcome email builders  (recipients + model)
-  → Fluid render                (parent layout + child content)
-  → send-email event            (sequential durable queue)
-  → SMTP dispatch
-  → notification + activity rows persisted
-```
+Rendering is isolated behind a dedicated Fluid rendering service. It parses the parent and child template strings with Fluid, registers only the known workflow context models, and adds a small set of controlled custom filters, such as one that joins approver names into a readable list. That gives business-owned templates flexibility without granting a template arbitrary code execution. The rendering surface is a safeguard, not an open door.
 
-Each dispatch persists the serialized outbound payload and a `Notified` activity, so "was the approver emailed, and what exactly did we send?" is a query. A test-address setting redirects all mail in non-production environments.
+The send path is the next control boundary. The notification handler receives a notification event, builds the messages for the workflow instance, and publishes a send-email event for each one. The send handler then validates that the message exists, carries at least one recipient, has a subject, and has a body. An invalid message produces a workflow error event instead of a malformed outbound email, so a bad payload is prevented from reaching the mail server at all.
 
-Failures follow one road. Any handler that breaks emits a workflow error event; its handler marks the instance, writes an error activity, then raises a normalised application-error event carrying the correlation ID — which is logged, emailed to operators today, and shaped to hand off to an alerting sink (Teams, monitoring) by adding a handler, not touching producers.
+SMTP delivery is handled by a dedicated SMTP sender through MailKit: it builds a MIME message, connects with StartTLS, authenticates, sends the HTML body, and disconnects. This is also where non-production safety is enforced. If a test address is configured, the recipients are replaced by the test mailbox, so staging can execute the identical path without reaching a real approver. If no test address is configured, the send is treated as production: the handler persists a notification record containing the serialized email payload and writes a notification activity row for each To and Cc recipient. The audit evidence is created by the real send, not promised by the test one.
 
-### Designed to Be Operated
+Request-for-change handling is the most sensitive route, because it must not lose the workflow's current stage simply because an approver needs corrections. The handler reads the latest request-for-change action activity: if the approver requested changes, it creates pending transition activities for the initiator; if the initiator has updated the request, it returns the task to the current approver. The stage stays fixed while responsibility moves according to persisted activity state.
 
-Every pipeline stage is also exposed as a guarded Wolverine HTTP endpoint (`/event/workflow/…`), with a documented replay order. A workflow stuck after a manual data fix, a notification that never fired, an email that needs rebuilding from current state — each is a one-call recovery, using the same handlers production uses. The system assumes a human will someday need to nudge it, and makes the nudge safe.
+Errors follow a single recovery route. Workflow handlers emit a workflow error event carrying the workflow instance id, correlation context, error text, and stack trace. A dedicated error handler marks the workflow instance with an error state, writes a system-owned error activity, and emits a normalised application error event with metadata. A notification failure therefore stays inside the workflow evidence model and is handed to the platform's broader error handling rather than vanishing into a log line.
+
+The result is a notification architecture shaped around governance risk. It names the assets that make an email accountable, derives routing from durable history, validates every outbound message, keeps SMTP away from the workflow command, redirects lower-environment sends safely, and records production notification evidence where an operator can query it.
