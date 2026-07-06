@@ -16,7 +16,7 @@ export const docsCategories = [
     name: 'Projects',
     slug: 'projects',
     parent: 'showcase',
-    description: 'Personal builds across C#/.NET, Python, TypeScript and more — each with a write-up of what it does and how.',
+    description: 'Personal builds across C#/.NET, Python, TypeScript and more, each with a write-up of what it does and how.',
     icon: 'spark',
   },
   {
@@ -30,7 +30,7 @@ export const docsCategories = [
     name: 'Experience',
     slug: 'experience',
     parent: 'career',
-    description: 'Roles from web developer to software architect — what each one involved and what shipped.',
+    description: 'Roles from web developer to software architect, what each one involved and what shipped.',
     icon: 'flag',
   },
   {
@@ -77,6 +77,7 @@ export function getCategoryHref(categorySlug: string) {
 
 /** Top navigation: category pages surfaced directly, as in the original site design. */
 export const topNavItems = [
+  { label: 'Home', href: '/' },
   { label: 'About', href: `${getCategoryHref('about')}/about-jonathan` },
   { label: 'Experience', href: getCategoryHref('experience') },
   { label: 'Projects', href: getCategoryHref('projects') },
