@@ -1,5 +1,6 @@
 ---
 import { getCollection } from 'astro:content';
+import { Image } from 'astro:assets';
 import CategoryCard from '../components/CategoryCard.astro';
 import CategorySection from '../components/CategorySection.astro';
 import SearchHero from '../components/SearchHero.astro';
@@ -79,12 +80,12 @@ const highlights = [
           </a>
         </div>
       </div>
-      <img
+      <Image
         src="/portrait.jpg"
         alt="Portrait of Jonathan Hussey"
         width="220"
         height="220"
-        loading="eager"
+        loading="lazy"
         class="h-[140px] w-[140px] shrink-0 rounded-full border-4 border-[var(--color-border)] object-cover md:h-[220px] md:w-[220px]"
       />
     </div>

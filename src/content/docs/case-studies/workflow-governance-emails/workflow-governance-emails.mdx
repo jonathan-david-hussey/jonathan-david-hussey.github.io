@@ -1,7 +1,9 @@
 ---
-title: 'A Threat-Led Notification Model for an R&D Governance Portal'
+title: 'Event-Driven Workflow Governance'
 description: 'A .NET 9 notification model that protects governance approval communication by selecting emails from persisted workflow history, rendering them through Fluid templates, dispatching them over durable Wolverine queues, and preserving every production send as auditable notification evidence.'
 category: 'case-studies'
+tldr: >-
+  An Event-Driven .NET Workflow Governance Framework whose core activity is to carry approval decisions through an R&D Project Management Portal, directing each approval decision to the next configurable approver. Emails are selected from persisted workflow history, rendered through safe templates, and dispatched over durable queues.
 tags:
   [
     'C#',
@@ -59,7 +61,7 @@ lessons: 'The asset worth protecting in a governance email system is not the ema
 
 ## Context
 
-The R&D governance portal exists to carry ordered approval decisions. A project proposal is raised by an initiator and moves through a configured chain of approvers, and at every stage the platform has to direct attention to the one person expected to act next. Approval, rejection, request for change, update after change, completion, and the finance handoff are communication events as much as they are workflow events.
+The R&D Project Management Portal enables ordered approval decisions for governance over the creation of new projects for R&D. Project proposals are raised by an initiator which then moves through a configured chain of approvers. Approval, rejection and requests for change enable the Governance Framework to manage requirements by different stakeholders before the project is approved by leadership.
 
 The assets that keep this activity trustworthy are therefore broader than the email body. The workflow instance, its activity stream, the current approver, the initiator, the approver chain, the email templates, the rendered subject and HTML body, the recipient list, the SMTP configuration, the correlation id, and the notification audit record all contribute to business continuity. If any one of these assets is incomplete or untraceable, the organisation can no longer prove that a governance action reached the person who was expected to act on it.
 

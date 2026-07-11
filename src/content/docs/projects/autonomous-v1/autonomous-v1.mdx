@@ -2,6 +2,8 @@
 title: 'Autonomous'
 description: 'A NestJS coordination backend that combines protected HTTP APIs, MQTT vehicle messaging, MongoDB persistence, mission-status history, Swagger documentation, and a Dockerized EMQX simulation stack.'
 category: 'projects'
+tldr: >-
+  Autonomous is a NestJS coordination backend whose core activity is to coordinate a small vehicle fleet's operators, missions, and field devices. Operator commands run over protected HTTP while vehicle telemetry and mission traffic run over MQTT, and every mission transition is recorded as an append-only status entry so its full progression stays visible.
 tags:
   [
     'TypeScript',

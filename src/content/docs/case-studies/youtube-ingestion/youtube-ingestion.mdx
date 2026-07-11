@@ -1,7 +1,9 @@
 ---
-title: 'YouTube Ingestion for a Social Intelligence Platform'
+title: 'YouTube Ingestion for Social Intelligence'
 description: 'A .NET serverless platform that treats YouTube as two ingestion problems with different economics: a continuous feed pipeline for fresh videos and a quota-metered Data API pipeline for account metadata, fanned out across SQS, S3, Kinesis, DynamoDB, and Elasticsearch with a durable boundary at every handoff.'
 category: 'case-studies'
+tldr: >-
+  This platform is a social-media intelligence service whose core activity depends on YouTube behaving as a first-class source, with recent videos searchable and channel profiles kept current. It treats YouTube as two pipelines rather than one, a continuous feed path for fresh videos and a quota-metered path for account metadata, so that more than 70,000 channels stay current on only a fraction of the daily request budget.
 tags:
   [
     'C#',

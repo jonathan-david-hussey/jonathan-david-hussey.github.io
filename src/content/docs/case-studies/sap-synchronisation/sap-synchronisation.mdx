@@ -1,7 +1,9 @@
 ---
-title: 'A Risk-Led SAP Synchronisation Model for an R&D Governance Portal'
-description: 'A .NET 9 synchronisation layer that protects the agreement between an internal R&D governance portal and SAP through durable messaging, OData refreshes, outbound project reconciliation, and an auditable ledger for every run.'
+title: 'Bidirectional Synchronisation for Finance & Projects'
+description: 'This is a .NET 9 REST API whose core activity is to keep a R&D Project Management Portal and SAP Enterprise solution in synchronisation. The API is a sub-component of a larger platform: it uses Wolverine for durable queues and events and Hangfire for nightly scheduling, pulling finance data inward from SAP into SQL Server for reporting, dashboards, and other downstream consumers. Approved project records are reconciled outward to SAP after governance completion.'
 category: 'case-studies'
+tldr: >-
+  The system is built to make synchronisation between a R&D Project Management Portal and SAP both durable and auditable. Finance data flows inward through OData refreshes, approved project records flow outward through reconciliation, and every run creates an audit log so that failures are visible rather than hidden.
 tags:
   [
     'C#',

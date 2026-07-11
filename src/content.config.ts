@@ -43,6 +43,9 @@ const docs = defineCollection({
         role: z.string().optional(),
         dates: z.string().optional(),
         roleSummary: z.string().optional(),
+        // One- to three-sentence TL;DR rendered directly under the title, above
+        // the meta blocks and body. Optional; used by projects and case studies.
+        tldr: z.string().optional(),
         metrics: z.array(z.string()).optional(),
         decisions: z
           .array(

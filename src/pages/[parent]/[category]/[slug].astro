@@ -5,6 +5,7 @@ import SearchPreviews from '../../../components/SearchPreviews.astro';
 import Sidebar from '../../../components/Sidebar.astro';
 import AtAGlance from '../../../components/docs/AtAGlance.astro';
 import Badge from '../../../components/docs/Badge.astro';
+import Callout from '../../../components/docs/Callout.astro';
 import Card from '../../../components/docs/Card.astro';
 import DecisionList from '../../../components/docs/DecisionList.astro';
 import OutcomeBlock from '../../../components/docs/OutcomeBlock.astro';
@@ -86,8 +87,8 @@ const getBadgeTone = (badge: string) => {
 // false, so nothing shows until the author verifies). AI-Assisted carries a
 // robot icon; Reviewed carries a tick.
 const showcaseBadges: Array<{ label: string; tone: 'info' | 'success'; icon: 'robot' | 'check' }> = [];
-if (doc.data.aiAssisted) showcaseBadges.push({ label: 'AI-Assisted', tone: 'info', icon: 'robot' });
-if (doc.data.reviewed) showcaseBadges.push({ label: 'Reviewed', tone: 'success', icon: 'check' });
+// if (doc.data.aiAssisted) showcaseBadges.push({ label: 'AI-Assisted', tone: 'info', icon: 'robot' });
+// if (doc.data.reviewed) showcaseBadges.push({ label: 'Reviewed', tone: 'success', icon: 'check' });
 ---
 
 <Layout
@@ -192,22 +193,12 @@ if (doc.data.reviewed) showcaseBadges.push({ label: 'Reviewed', tone: 'success',
           }
         </h1>
         {
-          doc.data.description && (
+          !isStructuredShowcase && doc.data.description && (
             <p class="mt-5 max-w-2xl text-base leading-7 text-[var(--color-text)]">{doc.data.description}</p>
           )
         }
 
-        {
-          doc.data.tags.length > 0 && (
-            <ul class="mt-5 flex flex-wrap gap-2" aria-label="Article tags">
-              {doc.data.tags.map((tag) => (
-                <li>
-                  <Badge>{tag}</Badge>
-                </li>
-              ))}
-            </ul>
-          )
-        }
+        {isStructuredShowcase && doc.data.tldr && <Callout title="TL;DR">{doc.data.tldr}</Callout>}
 
         {
           doc.data.heroImage && (
@@ -249,13 +240,12 @@ if (doc.data.reviewed) showcaseBadges.push({ label: 'Reviewed', tone: 'success',
           )
         }
 
-        <div class="docs-divider mt-8 border-t"></div>
-
+        <!-- <div class="docs-divider mt-8 border-t"></div>
         {
           isStructuredShowcase && doc.data.role && doc.data.dates && doc.data.roleSummary && (
             <ShowcaseMeta role={doc.data.role} dates={doc.data.dates} roleSummary={doc.data.roleSummary} />
           )
-        }
+        } -->
         {isStructuredShowcase && doc.data.metrics && <AtAGlance metrics={doc.data.metrics} />}
 
         <div
@@ -268,6 +258,18 @@ if (doc.data.reviewed) showcaseBadges.push({ label: 'Reviewed', tone: 'success',
         {
           isStructuredShowcase && doc.data.outcome && doc.data.lessons && (
             <OutcomeBlock outcome={doc.data.outcome} lessons={doc.data.lessons} />
+          )
+        }
+
+        {
+          doc.data.tags.length > 0 && (
+            <ul class="mt-5 flex flex-wrap gap-2" aria-label="Article tags">
+              {doc.data.tags.map((tag) => (
+                <li>
+                  <Badge>{tag}</Badge>
+                </li>
+              ))}
+            </ul>
           )
         }
 
