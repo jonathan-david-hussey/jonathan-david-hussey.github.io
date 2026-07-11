@@ -1,37 +1,48 @@
 ---
 title: 'IGCSE Past Paper Toolkit'
-description: 'A Python CLI that extracts topic-matched multiple-choice and structured questions from Cambridge IGCSE past-paper PDFs, pairs them with their mark-scheme answers, de-duplicates across series, and renders searchable consolidated question, answer, and manifest outputs.'
+description: 'The IGCSE Past Paper Toolkit is a Python document-processing pipeline that turns paired Cambridge question papers and marking schemes into focused, traceable practice material.'
 category: 'projects'
 tldr: >-
-  The IGCSE Past Paper Toolkit turns Cambridge IGCSE past papers into focused, topic-matched or semantically-matched practice sets. It detects each marking scheme's answer style, clips questions from positional layout heuristics, pairs each to its answer, and de-duplicates. The toolkit is reusable across all subjects in Cambridge IGCSE.
+  The pipeline reconstructs questions from PDF layout, matches them to official answers, removes repeated material, and records the source of every result. It produces topic-led sets and can turn a question answered incorrectly into further practice by searching for related questions across indexes built from more than 40 papers.
 tags:
   [
     'Python',
     'CLI',
     'PyMuPDF',
+    'NumPy',
+    'Sentence Transformers',
+    'Document Automation',
     'PDF Processing',
     'OCR',
     'Text Extraction',
+    'Document Layout Analysis',
+    'Cross-Page Extraction',
     'Cambridge IGCSE',
     'Past Papers',
     'NLP',
-    'NLTK',
-    'NumPy',
-    'Sentence Transformers',
+    'Information Retrieval',
     'Semantic Search',
-    'Embeddings',
+    'Hybrid Search',
+    'Vector Embeddings',
+    'Rule-Based Heuristics',
+    'Topic Matching',
+    'Answer Detection',
+    'De-duplication',
+    'Content Fingerprinting',
+    'Data Provenance',
+    'Traceability',
+    'Pipeline Architecture',
+    'Test Automation',
     'pytest',
     'Ruff',
     'MyPy',
+    'Branch Coverage',
     'Mutation Testing',
+    'Education Technology',
+    'Exam Preparation',
     'Claude Code',
     'OpenAI Codex',
     'OpenCode',
-    'OpenRouter',
-    'Strategy Pattern',
-    'Builder Pattern',
-    'Template Method Pattern',
-    'Chain of Responsibility Pattern',
     'Pipeline Pattern',
   ]
 aiAssisted: true
@@ -39,74 +50,63 @@ reviewed: true
 order: 1
 role: 'Author'
 dates: '2026 - present'
-roleSummary: 'I designed and built the whole toolkit: the PyMuPDF question extraction and boundary detection, the mark-scheme answer-style detector, the topic and term matching, the MCQ-aware de-duplication, the answer pairing, and the searchable PDF and manifest output.'
+roleSummary: 'The toolkit combines PDF boundary analysis, answer pairing, topic filtering, de-duplication, retrieval, and traceable output generation in one Python codebase.'
 metrics:
-  - 'Extracts real Cambridge IGCSE exam questions rather than generating them, keeping each item tied to its source paper, page, and official answer'
-  - 'Subject-agnostic across Cambridge IGCSE papers - used across Mathematics, Economics, Biology, Chemistry, and other multiple-choice sets from the same code path'
-  - 'Every run emits searchable question and answer PDFs plus a 31-column manifest CSV audit trail'
-  - '12-tool quality gate: 85% branch-coverage threshold, McCabe complexity capped at 8, cognitive complexity at 10, plus optional mutation testing'
+  - '5 Cambridge IGCSE subjects are represented in stored runs: Mathematics, Economics, Biology, Chemistry, and Computer Science'
+  - '1 source question, identified by paper filename and question number, can retrieve related practice from indexes built from 40+ papers'
+  - '3 primary artefacts are produced for each consolidation run: questions PDF, answers PDF, and manifest CSV'
+  - '31 manifest fields connect each result to its source paper, page, answer, extraction boundary, and duplicate history'
 decisions:
-  - title: 'Extract real papers, do not generate questions'
-    detail: 'The toolkit crops authentic Cambridge questions and pairs them with the official mark-scheme answers rather than asking a model to write new ones, so every item is genuine exam material with a verifiable source paper, page, and answer.'
-    tradeoff: 'Output fidelity depends on PDF layout and detector heuristics rather than a prompt, so an unfamiliar paper layout needs detector tuning instead of a reword.'
-  - title: 'Positional heuristics and tight image clips over layout ML'
-    detail: 'Question markers, options, and boundaries are found from PyMuPDF text-span coordinates and pixel-content checks tuned to the Cambridge layout, then each question is rendered as a tight, high-DPI image clip that keeps diagrams and option art intact.'
-    tradeoff: 'The coordinate thresholds are specific to the paper style and must be revisited for very different layouts, but they stay fast, dependency-light, and debuggable.'
-  - title: 'Detect answer style before extracting'
-    detail: 'Each mark-scheme set is scanned first to classify it as mcq, longform, or mixed with a confidence score, and that classification selects per-page extraction for MCQs or cross-page span extraction for structured papers.'
-    tradeoff: 'It adds a pre-pass over the mark schemes, but it stops the pipeline applying multiple-choice assumptions to structured papers and vice versa.'
-  - title: 'MCQ-aware de-duplication across series'
-    detail: 'Cambridge reuses questions between exam series, so each question is fingerprinted from stopword-filtered stem tokens plus its four normalized option texts; reused questions collapse to one rendered item while the manifest records every paper they came from.'
-    tradeoff: 'Signature tuning can occasionally merge near-identical variants, but it removes repeated revision of the same question from a topic set.'
+  - title: 'Use Published Papers as Source Material'
+    detail: 'The toolkit preserves the published question and pairs it with the corresponding marking scheme entry. Each result therefore retains a verifiable paper, page, and answer.'
+    tradeoff: 'Extraction quality remains dependent on the source PDF and its layout conventions.'
+  - title: 'Use Positional Heuristics for Layout'
+    detail: 'PyMuPDF coordinates, text evidence, sequence checks, and pixel inspection provide an explainable way to locate question boundaries and retain nearby figures.'
+    tradeoff: 'A substantially different paper family can require new thresholds or detector rules.'
+  - title: 'Classify Answer Styles Before Extraction'
+    detail: 'The marking schemes are inspected first and classified as multiple-choice, structured, or mixed. This determines whether question and answer regions can be handled per page or must span page boundaries.'
+    tradeoff: 'The classification adds an initial pass and can only be as confident as the structure visible in the marking schemes.'
+  - title: 'De-duplicate with Question Content'
+    detail: 'Question stems and normalised option text form a content signature, allowing reused questions with different numbers to collapse into one result.'
+    tradeoff: 'Near-identical variants can challenge the boundary between a duplicate and a meaningfully changed question.'
 outcome:
-  - 'Students get focused exam practice made from real past-paper questions, with diagrams, options, source paper labels, and official answers preserved.'
-  - 'Teachers can use the scripts to extract targeted question sets for a lesson, revision session, or homework pack instead of hand-copying questions from many PDFs.'
-  - 'The same extractor works across Cambridge IGCSE subjects: it has produced consolidated question sets for Mathematics, Economics, Biology, Chemistry, and more from one code path, with no per-subject changes.'
-  - 'Because every item records its source paper, page, matched term, and answer, a run is fully auditable and reproducible rather than a black-box export.'
-lessons: 'The reliability of a consolidated paper comes from provenance, not cleverness. Cambridge PDFs already contain trustworthy questions and answers; the engineering that matters is detecting structure from layout, pairing each question to its mark scheme, and recording every decision in a manifest so a wrong crop or a missing answer is visible rather than silent. Keeping detection, extraction, matching, and output as separate, testable stages is what let the same tool move from one Cambridge IGCSE subject to another without a rewrite.'
+  - 'Stored runs demonstrate the consolidation pipeline across Mathematics, Economics, Biology, Chemistry, and Computer Science papers.'
+  - 'Students can create focused question sets through topic matching or semantic similarity while preserving diagrams, source labels, and official answers.'
+  - 'A question answered incorrectly can seed a similarity search by paper and question number, returning related practice from indexes spanning more than 40 papers.'
+  - 'Each result can be traced through the manifest rather than treated as an unexplained PDF crop.'
+lessons: 'The central difficulty was recovering dependable structure from documents that were created for visual reading. Separating boundary analysis, filtering, answer lookup, and output made incorrect assumptions easier to locate. The durable answer was an evidence trail: source coordinates, answer references, duplicate history, and explicit extraction status.'
 ---
-
 import sampleQuestion from './sample-extracted-question.webp';
 
 ## Context
 
-For an IGCSE learner, revision material already exists: Cambridge publishes years of question papers and mark schemes as PDFs. The problem is that they are scattered across dozens of files, mixed across every topic, and repeated between series. Turning a whole subject's worth of papers into a focused, per-topic practice set is slow, manual work.
+Cambridge past papers already contain a large body of revision material. However, the questions and marking schemes are distributed across separate PDFs, arranged by examination series rather than by the topic a learner needs to practise.
 
-The IGCSE Past Paper Toolkit automates that consolidation. It is a Python command-line tool: point it at a folder of paired question-paper and mark-scheme PDFs, give it a topic, and it produces a single question set for that topic, de-duplicated, with each question's answer looked up from the matching mark scheme and a manifest that records exactly where every item came from.
+The IGCSE Past Paper Toolkit reorganises that material. A consolidation run accepts paired question papers and marking schemes, selects relevant questions, attaches their answers, removes reused items, and writes a focused set of outputs.
 
-It works with authentic exam content rather than generated questions. The multiple-choice pipeline is subject-agnostic across Cambridge IGCSE papers and has worked across Mathematics, Economics, Biology, Chemistry, and more. The engineering effort goes into reading the PDFs reliably, pairing questions to answers, and preserving provenance.
+The source material remains authoritative throughout the process. Stored runs cover five subjects, but that evidence is a demonstration rather than a guarantee that every Cambridge layout will work without adjustment.
 
 ## The Problem
 
-A PDF is a poor source of practice material. Cambridge papers contain the questions and answers, but nothing about their structure is directly accessible: there is no reliable list of where each question starts and ends, which option is correct, whether a diagram belongs to the question, or which questions cover a given topic. Two papers from different series will also repeat the same question with different numbering.
+The central difficulty was that a PDF preserves appearance without exposing the examination structure needed by the toolkit. Text and coordinates are available, but there is no dependable record of where a question ends, whether nearby artwork belongs to it, or which marking scheme region supplies its answer.
 
-So the core problem was extraction, not authoring. The toolkit had to read varied Cambridge PDFs, find and crop each question with its options and figures intact, decide which questions match a requested topic, pair each one to the correct answer in its mark scheme, remove duplicates, and emit an output a learner can actually revise from, all while recording enough metadata to audit and reproduce the run.
+Paper formats also differ. Multiple-choice answers often appear as compact rows, while structured answers can occupy blocks across several pages. Questions may be repeated in another series under a different number, and figures can extend below the final option or prompt.
+
+The problem was therefore not simply text extraction. The pipeline had to reconstruct a complete question-answer unit and retain enough evidence to explain every boundary and match.
 
 ## Constraints
 
-- **Source fidelity.** Each extracted question has to keep its full stem, all four options, and any diagram or table, because cropping those away would make the question unusable.
-- **Layout variability.** Question numbering, option positions, footers, and page breaks vary between papers, so detection has to lean on positional heuristics and pixel-content checks rather than one rigid template.
-- **Question and answer pairing.** A question is only useful with its answer, so every question paper has to be matched to its `_ms_` mark scheme and each question number resolved to a letter and mark or a structured answer block.
-- **Answer-style ambiguity.** A folder can hold pure multiple-choice papers, structured longform papers, or a mix, and the tool has to detect which before choosing an extraction strategy.
-- **Duplication across series.** Reused questions must collapse to a single item while still recording every paper they appeared in.
-- **Provenance and reproducibility.** A run should be fully auditable: source paper, page, matched topic term, answer, correct option, status, and duplicate sources all recorded, so a bad crop or a missing answer is obvious rather than silent.
-- **Subject-agnostic reach.** The same extractor should handle any Cambridge IGCSE subject's papers, not just one, without code changes.
+- **Source Fidelity.** Each question must retain its stem, options, diagrams, and tables; a clean text match is insufficient if the visual crop loses information needed to answer it.
+- **Layout Variability.** Question markers, option groups, figures, footers, and page breaks move between papers, so no single fixed rectangle can define a question.
+- **Answer Formats.** Compact multiple-choice rows and multi-page structured answers require different extraction paths selected before consolidation begins.
+- **Cross-Series Duplication.** Reused questions should appear once in the output while every additional source remains recorded.
+- **Traceability.** Missing answers and incorrect boundaries must remain visible through source paths, coordinates, statuses, and answer references in the manifest.
 
 ## The Design
 
-At the highest level, the toolkit is two scripts around the same extracted-question index. `igcse-consolidate` turns paired question-paper and mark-scheme PDFs into topic-focused practice material; the similar-question search then lets that extracted question set be searched either by exact text phrases or by embedding similarity from a source question.
+Question papers are discovered by filename and paired with marking schemes through the corresponding `_qp_` and `_ms_` names. Before question extraction begins, the marking schemes are inspected for compact answer rows and structured answer blocks. The resulting classification selects the appropriate per-page or cross-page path.
 
-Here is the kind of capture the pipeline is designed to preserve: a real multiple-choice question, its source paper label, the diagram, the stem, and all four options as one tight question image.
-
-<figure>
-  <img
-    src={sampleQuestion.src}
-    alt="A captured Cambridge IGCSE multiple-choice question with a production possibility curve diagram and answer options."
-  />
-  <figcaption>
-    Sample extracted question from an Economics multiple-choice run, cropped from the consolidated questions PDF.
-  </figcaption>
-</figure>
+The consolidation pipeline then passes structured question records through boundary analysis, topic matching, de-duplication, answer lookup, and output generation. The same extracted-question records can also be indexed for retrieval, but this remains a secondary path built on the extraction work.
 
 <Mermaid
   title="High Level Design"
@@ -135,11 +135,7 @@ flowchart TD
 ` }
 />
 
-The toolkit is organised as a pipeline around one durable boundary: the pairing between a question and its mark-scheme answer, captured in a manifest. The `igcse-consolidate` command drives a single run through `run_consolidation`, which owns extraction, filtering, de-duplication, answer lookup, and output writing. Everything is split into small, separately testable stages, with the PDF reading isolated behind PyMuPDF.
-
-A run begins by inspecting the mark schemes. Answer-style detection reads each `_ms_` file, counts compact answer rows such as `1 A 1`, question number, option letter, marks, and looks for structured answer blocks anchored to question identifiers. From those signals it classifies the folder as `mcq`, `longform`, or `mixed` with a confidence score. That classification chooses the extraction mode: per-page detection for multiple-choice papers, or cross-page span extraction for structured papers whose answers run across page breaks.
-
-Extraction then reads the question papers. It finds question markers by their position, the number in the left margin, and confirms each one with stem evidence and a running sequence check, so a stray number in the body of a question is not mistaken for a new question. For each marker it computes a tight visual clip that grows down to include the options and any diagram, using pixel-content detection to decide where the answer options end and whether there is post-option artwork to keep. The result for every question is both its extracted text and a precise bounding box.
+Boundary analysis begins with numbers positioned in the expected question margin. Text evidence and sequence checks reject unrelated numbers, while the next accepted marker provides an initial lower boundary. For multiple-choice material, option detection and pixel inspection extend the crop when a diagram or wrapped option continues below the expected text region. Structured questions use page-spanning regions when the next boundary falls on a later page.
 
 <Mermaid
   title="Question detection and consolidation"
@@ -154,7 +150,7 @@ flowchart TD
   Keep{"Matches topic and filters?"}
   Skip@{ icon: "igcse:filter", form: "square", label: "Skip", pos: "b" }
   Fingerprint@{ icon: "igcse:fingerprint", form: "square", label: "Stem plus option fingerprint", pos: "b" }
-  Pair@{ icon: "igcse:file-link", form: "square", label: "Pair to mark-scheme answer", pos: "b" }
+  Pair@{ icon: "igcse:file-link", form: "square", label: "Pair to marking scheme answer", pos: "b" }
   Item@{ icon: "igcse:file-document", form: "square", label: "Consolidated item and manifest row", pos: "b" }
 
   Pages --> Markers
@@ -170,12 +166,15 @@ flowchart TD
 ` }
 />
 
-Topic matching starts from the term the run asks for. Each question's extracted text is compared against that topic and any aliases supplied alongside it, synonyms and acronym expansions, using whole-word matching for short terms such as acronyms and padded-phrase matching for longer terms, so a partial word never produces a false hit. Because the match runs on the extracted question text, the same mechanism works for any IGCSE subject without special-casing the content.
+Topic matching compares extracted text with the requested term and its aliases. Additional filters can require, permit, or exclude terms, and a positional selector can choose specific question numbers. De-duplication then removes the displayed question number and page noise before comparing canonical text; multiple-choice questions receive a second signature based on meaningful stem and option tokens.
 
-Above the topic match sits a set of composable filters. A run can require that all of a list of terms appear, that at least one appears, or that certain terms are excluded; it can keep only questions whose correct option or final prompt is itself topic-related by reading the actual answer from the mark scheme; and it can select questions positionally with a compact selector syntax such as `first`, `last`, `even`, `odd`, `8-11`, or `first 5`. Because Cambridge reuses questions between series, a de-duplication pass fingerprints each question from stopword-filtered stem tokens plus its four normalized option texts, collapses repeats to one rendered item, and records the papers each duplicate came from.
+Answer lookup resolves each retained question against its paired marking scheme. Multiple-choice results use the compact option-and-mark rows, while structured results preserve the relevant answer text and page clips. Output generation writes a searchable questions PDF, an answers PDF, and a 31-field manifest CSV containing the source, answer, extraction coordinates, status, fingerprint, and duplicate history. A combined PDF is optional.
 
-Answer lookup closes the loop. For multiple-choice papers a regular expression pulls the option letter and marks for each question number; for structured papers the tool locates the answer block and its page clips. Output writing then produces three artifacts per run: a questions PDF where each item is a tight, high-DPI crop labelled with its paper and question number and made searchable through an embedded OCR text layer; an answers PDF, either a compact table or rendered longform answer clips; and a 31-column manifest CSV that records the variant, detected answer style and confidence, source paths, matched term, answer, correct option, status, fingerprint, duplicate sources, and clip coordinates for every item. An optional combined PDF places questions first and answers at the end.
+Similar-question search operates over a separate index built from the extracted records. A question answered incorrectly can be selected by supplying its paper filename and question number; that question becomes the source for a ranked set of related practice drawn from the rest of the index. Stored subject indexes demonstrate this workflow across 42 to 50 papers. Phrase search provides a second route for direct text matches, while hybrid search combines embedding similarity with keyword and token overlap and applies small syllabus and representation adjustments. Sentence Transformers provides the normal embedding path; if it is unavailable, deterministic NumPy token-hashing vectors allow the index to remain usable with reduced semantic quality.
 
-Alongside the extractor sits a similar-question search with two retrieval strategies over an index of extracted questions. A classical strategy returns questions whose text contains a given phrase, ranked by frequency and token overlap; a hybrid strategy takes a source question and blends semantic embedding similarity with keyword and token overlap, nudged by same-syllabus and question-representation signals. Embeddings come from a Sentence Transformers model, with a deterministic NumPy fallback so an index still builds when the model is unavailable. The whole codebase is held to a strict, custom quality gate, a single runner that orchestrates Ruff, MyPy, Bandit, import-linter, Xenon, Radon, complexipy, pip-audit, pytest, coverage at an 85% branch threshold, Vulture, and Interrogate, with mutation testing available on demand, because PDF and text pipelines fail quietly unless their boundaries are continuously checked.
+The result is a pipeline whose important decisions remain inspectable. Stored outputs demonstrate its use across five subjects and both principal answer structures, while unfamiliar layouts remain an explicit detector-tuning boundary rather than an unqualified compatibility claim.
 
-Because the extraction, matching, and output stages are decoupled and individually tested, adding another Cambridge IGCSE subject is a matter of pointing the tool at new papers rather than changing the pipeline.
+<img
+  src={sampleQuestion.src}
+  alt="A captured Cambridge IGCSE multiple-choice question with a production possibility curve diagram and answer options."
+/>
