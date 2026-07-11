@@ -2,6 +2,8 @@
 title: 'Twitter Ingestion for Social Intelligence'
 description: 'A queue-driven, serverless Twitter ingestion system that keeps hundreds of thousands of accounts fresh under provider rate limits through scheduled refresh, a cheap validation gate, an autoscaling ECS ingester, bounded pagination, priority backfill, and Kinesis streaming into search and reporting.'
 category: 'case-studies'
+status: draft
+hideFromSearch: true
 tldr: >-
   This ingestion system serves a social-media intelligence platform whose core activity is to keep hundreds of thousands of Twitter accounts fresh under a finite provider rate budget. A cheap validation gate, bounded pagination, and one autoscaling ingester serving both refresh and backfill spend calls only where new data exists, and correcting a long-standing pagination fault restored the yield of each request from 6.25% to 100%.
 tags:

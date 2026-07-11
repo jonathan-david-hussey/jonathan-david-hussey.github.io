@@ -2,6 +2,8 @@
 title: 'Minimising Downstream Impact: Migrating from Twitter API v1 to v2'
 description: 'A .NET Standard NuGet library that converts Twitter v2 API responses into the v1 format at the ingestion boundary, so downstream applications remain untouched — turning a forced breaking change into migrations scheduled on our own terms.'
 category: 'case-studies'
+status: draft
+hideFromSearch: true
 tldr: >-
   When Twitter's v2 API broke the response format that 10+ of our applications, pipelines, and stream consumers depended on, the options were a coordinated big-bang migration (all consumers at once, maximum risk) or letting every team absorb the change independently (duplicated effort, inconsistent handling). I built a third option: an adapter library that converts v2 responses back into the v1 shape at the boundary. Targeting .NET Standard so both .NET Framework and .NET Core consumers could use it, and driven by inspectable conversion rules verified against hundreds of real-tweet tests. Infrasture could continue to process tweet data unchanged with zero downtime, with each downstream migration scheduled deliberately rather than forced by the provider's deadline.
 tags:
