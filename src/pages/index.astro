@@ -21,7 +21,7 @@ const suggestedArticles = getSuggestedSearchArticles(publicDocs);
 const searchPreviews = getSearchPreviewLookup(publicDocs);
 
 const highlights = [
-  { value: '14+ yrs', label: 'designing and delivering production systems' },
+  { value: `${site.yearsOfExperience}+ yrs`, label: 'designing and delivering production systems' },
   { value: '89%', label: 'search latency cut across an Elasticsearch cluster' },
   { value: '92%', label: 'infrastructure cost reduction for a flagship product' },
   { value: '0', label: 'site-wide outages after a concurrency redesign' },
@@ -50,7 +50,7 @@ const highlights = [
           Architecture-focused .NET, cloud-native, and AI-enabled systems
         </p>
         <p class="mb-6 text-[var(--color-text)]">
-          14+ years designing, rebuilding, and running modern .NET, cloud-native, and AI-enabled
+          {site.yearsOfExperience}+ years designing, rebuilding, and running modern .NET, cloud-native, and AI-enabled
           platforms across SaaS, healthcare, government, analytics, and enterprise environments,
           leading architecture while remaining a full hands-on contributor and measuring the result.
         </p>

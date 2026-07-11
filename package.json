@@ -57,11 +57,13 @@
     "astro": "^6.4.3",
     "dompurify": "^3.4.11",
     "jsdom": "^29.1.1",
+    "luxon": "^3.7.2",
     "mermaid": "^11.16.0",
     "tailwindcss": "^4.1.14"
   },
   "devDependencies": {
     "@astrojs/check": "^0.9.9",
+    "@types/luxon": "^3.7.2",
     "pagefind": "^1.5.2",
     "prettier": "^3.8.4",
     "prettier-plugin-astro": "^0.14.1",
