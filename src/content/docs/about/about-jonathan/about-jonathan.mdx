@@ -1,19 +1,48 @@
 ---
 title: 'About Jonathan'
-description: 'Staff-level software engineer with a strong architecture focus, building reliable .NET platforms, cloud-native systems, AI-enabled tools, and measurable engineering outcomes.'
+description: 'Staff-level software engineer and software architect working across platform modernisation, distributed systems, data-intensive products, and applied AI.'
 category: 'about'
 tags:
   [
     'C#',
     '.NET',
-    'Python',
+    'ASP.NET Core',
     'TypeScript',
+    'Python',
+    'SQL',
     'AWS',
-    'AI',
+    'Elasticsearch',
     'Software Architecture',
+    'Distributed Systems',
+    'Event-Driven Architecture',
     'Cloud-Native Systems',
+    'Data Pipelines',
+    'System Integration',
+    'Integration Orchestration',
+    'API Design',
+    'Performance Engineering',
+    'Observability',
+    'CI/CD',
+    'Clean Architecture',
     'Design Patterns',
+    'Strategy Pattern',
+    'Adapter Pattern',
+    'AI Engineering',
+    'AI-Native Platforms',
+    'Voice AI',
+    'LLM Orchestration',
+    'RAG',
+    'Tool Calling',
+    'Dynamic Tool Contracts',
+    'Request Normalisation',
+    'Response Transformation',
+    'Multi-Tenant SaaS',
+    'Message Queues',
+    'Redis',
+    'AI-Assisted Development',
+    'Product Engineering',
     'Engineering Leadership',
+    'Technical Mentoring',
   ]
 order: 1
 ---
@@ -22,28 +51,46 @@ import { yearsOfExperience } from '../../../../data/experience';
 
 ![Portrait of Jonathan Hussey](./portrait.jpg)
 
-I am a staff-level software engineer with a strong architecture focus and {yearsOfExperience}+ years of experience designing, rebuilding, and operating systems that have to keep working. The work has ranged from healthcare platforms where concurrent edits to patient data are a safety concern, to analytics pipelines ingesting hundreds of millions of records a month, to AI-enabled systems where the real engineering challenge begins after the model call returns.
+I build software at the point where architecture, product delivery, and operations meet. Over {yearsOfExperience}+ years, that has meant working across web products, healthcare systems, high-volume analytics, enterprise platforms, and applied AI, usually on software that has outgrown a simple implementation answer.
 
-My background began in web development and design, then moved through energy, healthcare, social intelligence, government, and enterprise environments. That path shaped the way I approach architecture: identify the assets that matter, make failure visible, preserve enough evidence to recover, and measure the result rather than relying on assertion.
+The common thread is change. Sometimes a product needs to move beyond a legacy architecture; sometimes growth has exposed a performance limit; sometimes a manual process needs to become a dependable platform. My role is to understand the problem, shape a design that the team can deliver, and remain close enough to the code to know whether the design works in practice.
 
-These days I often take architecture ownership while remaining a full hands-on contributor. That usually means defining the system boundary, writing the load-bearing parts, reviewing the rest, and helping the team understand why the design exists. The objective is not only to ship the software, but to leave behind a system that can be operated, explained, extended, and repaired.
+Today I work as a staff-level engineer and software architect. I am most useful when a system needs both technical direction and hands-on delivery: establishing boundaries, implementing the parts that carry the most responsibility, reviewing decisions with the team, and improving the engineering environment around the product.
 
-## How I Work
+## From Product Interfaces to Platform Architecture
 
-- **Design around failure paths.** I treat retries, audit trails, durable queues, explicit state, replayability, and operational alerts as part of the core design rather than as late additions.
-- **Measure before and after.** Most of the numbers on this site exist because performance claims without baselines are just adjectives. A change should be able to show what improved, what became safer, or what became easier to operate.
-- **Use patterns where they clarify responsibility.** Strategy, Observer, State, Adapter, Builder, Template Method, and Chain of Responsibility appear across the projects and case studies because they create useful boundaries around behaviour, events, construction, and variation.
-- **Keep architecture connected to delivery.** A design only matters if it survives the implementation. I prefer small, testable stages, clear contracts, and code paths that can be inspected when something goes wrong.
-- **Use AI tools deliberately.** Claude Code, OpenAI Codex, GitHub Copilot, and similar tools are useful accelerators for scaffolding, tests, refactoring, and exploration, but the design, review, and accountability still sit with the engineer.
+My career began with web applications, real-time dashboards, and product interfaces. That work provided an early understanding of how technical decisions reach the user: performance, interaction design, maintainability, and delivery all become part of the same product experience.
 
-## What I Build
+Work in energy and healthcare then moved the focus towards integration, concurrency, and shared data. Systems had to communicate across established boundaries, while real-time collaboration and simultaneous edits required clear rules for keeping information current and consistent.
 
-- **Reliable .NET platforms**, including workflow engines, integration layers, internal APIs, background processing, and auditable business systems.
-- **Cloud-native data and reporting systems**, including serverless ingestion, queue-backed processing, search indexing, event handoffs, and replayable pipelines.
-- **AI-enabled tools**, including retrieval, generation, verification loops, local study applications, codebase context tooling, and systems that preserve provenance around generated output.
-- **Engineering support systems**, including CI/CD, observability, structured logging, test suites, package boundaries, and practices that help teams move safely.
+Large-scale analytics introduced a different set of questions. Data pipelines processed substantial monthly volumes, search infrastructure supported customer-facing reporting, and small inefficiencies became visible operating costs. One optimisation programme reduced average search latency by 89% and infrastructure costs by 92%; another redesign made report consolidation 360 times faster. These outcomes came from measurement, profiling, and architectural changes rather than isolated code tuning.
 
-Good entry points into that work are the [Technology Innovation Institute role](/career/experience/tii-software-architect), the [SAP synchronisation case study](/showcase/case-studies/sap-synchronisation), the [workflow governance email case study](/showcase/case-studies/workflow-governance-emails), [Ken](/showcase/projects/opticverge-ken), and [PDF Extractor](/showcase/projects/opticverge-pdf-extractor).
+More recent work has combined that background with platform modernisation and AI. This has included event-driven .NET services, cloud-native orchestration, multi-tenant platforms, retrieval and tool-calling workflows, and the delivery controls needed to operate them. The model or API is only one part of such a product; contracts, evaluation, observability, security, cost, and recovery determine whether it remains useful after release.
+
+## How I Contribute
+
+- **Architecture with implementation.** I translate product and operational requirements into boundaries, contracts, data flows, and delivery stages, then remain hands-on with the code that establishes those decisions.
+- **Improvement supported by evidence.** Profiling, production metrics, logs, traces, and user outcomes provide the basis for deciding what should change and whether the change worked.
+- **Technical leadership through the work.** Design reviews, code reviews, pairing, documentation, and mentoring are used to make decisions understandable and to raise the standard of future contributions.
+- **Delivery as part of the design.** Automated tests, CI/CD, observability, and environment promotion are treated as part of the product rather than work that begins after development.
+- **Deliberate use of AI.** Claude Code, OpenAI Codex, GitHub Copilot, and language models support exploration, scaffolding, testing, and refactoring, while engineering judgement remains responsible for the design and the result.
+
+## The Work I Build
+
+The portfolio centres on three connected areas. The first is platform engineering: APIs, workflow systems, integration layers, background processing, and modernisation paths for established software. The second is data-intensive software: ingestion, search, reporting, event hand-offs, and the operational work required to keep those flows understandable. The third is applied AI: retrieval, generation, tool use, verification, and systems that preserve evidence around generated output.
+
+The [SAP synchronisation case study](/showcase/case-studies/sap-synchronisation) shows a manual reporting process becoming an integrated portal workflow, while the [AI Tool Integration Layer](/showcase/case-studies/ai-tool-integration-layer) examines a configurable boundary between agents and external services. The [IGCSE Past Paper Toolkit](/showcase/projects/igcse-past-paper-toolkit) demonstrates document reconstruction, traceable outputs, and retrieval across published material. [Ken](/showcase/projects/opticverge-ken) and [PDF Extractor](/showcase/projects/opticverge-pdf-extractor) explore grounded generation and documentation capture, while the [Experience section](/career/experience) provides the wider professional history.
+
+## Selected Outcomes
+
+- Replaced unstable processing with queue-based architecture that virtually eliminated recurring site-wide application downtime.
+- Reduced average search latency by 89%, search rejections by 99%, and infrastructure costs by 92% through a measured performance programme.
+- Refactored a reporting export path so consolidation completed 360 times faster.
+- Built a machine-learning pipeline that processed 125 million records per month.
+- Created a [configurable integrations framework](/showcase/case-studies/ai-tool-integration-layer) that allowed voice and chat agents to discover permitted tools, call unlike services through one contract, and receive channel-specific results without embedding service logic in the agents.
+- Designed a queue-backed scheduler for real-time and planned AI calls, coordinating tenant availability, usage limits, concurrency, and local calling windows while recovering provider failures and stalled calls.
+- Designed concurrent data handling that allowed healthcare staff to work with shared patient information without losing simultaneous changes.
+- Introduced API, version-control, CI/CD, review, and observability foundations within a legacy platform modernisation programme.
 
 ## Education
 
@@ -53,20 +100,18 @@ Good entry points into that work are the [Technology Innovation Institute role](
 
 ## Technology Areas
 
-- **Core languages and platforms**, C#, .NET, ASP.NET Core, TypeScript, JavaScript, Python, SQL, Java, HTML, and CSS.
-- **Backend and workflow systems**, Wolverine, Hangfire, Node.js, NestJS, WebSockets, NuGet, REST APIs, background jobs, durable messaging, and event-driven architecture.
-- **AI and machine learning**, OpenAI, Claude Code, RAG, prompt engineering, tool calling, scikit-learn, Pandas, NumPy, feature engineering, and Jupyter.
-- **Data and persistence**, SQL Server, MySQL, Elasticsearch, OpenSearch, DynamoDB, Redis, EF Core, Dapper, and Kibana.
-- **Cloud and infrastructure**, AWS Lambda, SQS, Kinesis, ECS, S3, API Gateway, RabbitMQ, CloudFormation, Docker, and containerized local development.
-- **Delivery and operations**, GitHub Actions, GitLab Pipelines, AWS CodePipeline, Jenkins, ArgoCD, Datadog, CloudWatch, Serilog, and OpenTelemetry.
-- **Frontend and product surfaces**, Angular, React, RxJS, NgRx, MobX, WebRTC, Bootstrap, SCSS, dashboards, and internal tools.
-- **Testing and security**, xUnit, NSubstitute, Moq, AutoFixture, Jest, TDD, integration testing, OWASP, OAuth, JWT, Identity Server, and RBAC.
+- **Platforms and languages**, C#, .NET, ASP.NET Core, TypeScript, JavaScript, Python, SQL, Java, and Node.js.
+- **Distributed and data systems**, event-driven architecture, messaging, concurrency, SQL Server, MySQL, Elasticsearch, OpenSearch, Redis, DynamoDB, and data pipelines.
+- **Cloud and operations**, AWS, Docker, CI/CD, infrastructure as code, Datadog, CloudWatch, Serilog, and OpenTelemetry.
+- **AI engineering**, OpenAI APIs, retrieval-augmented generation, tool calling, LLM orchestration, embeddings, scikit-learn, Pandas, and NumPy.
+- **Product surfaces**, Angular, React, RxJS, dashboards, reporting tools, real-time communication, and internal applications.
+- **Engineering practice**, automated testing, API contracts, clean architecture, design patterns, observability, performance analysis, and secure delivery.
 
-## Where To Start
+## Explore the Work
 
-- For career history, see [Experience](/career/experience).
-- For personal builds, see [Projects](/showcase/projects).
-- For professional engineering stories, see [Case Studies](/showcase/case-studies).
+- [Experience](/career/experience) presents the professional history by role.
+- [Projects](/showcase/projects) covers personal research and completed builds.
+- [Case Studies](/showcase/case-studies) examines selected professional engineering decisions and outcomes.
 
 ## Contact
 
