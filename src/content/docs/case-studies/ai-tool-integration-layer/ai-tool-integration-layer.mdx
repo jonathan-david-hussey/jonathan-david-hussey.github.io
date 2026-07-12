@@ -1,0 +1,187 @@
+---
+title: 'AI Tool Integration Layer'
+description: 'The AI Tool Integration Layer is a NestJS orchestration system that gives voice and chat agents one configurable contract for discovering and calling external services.'
+category: 'case-studies'
+tldr: >-
+  Voice and chat agents share one integration language rather than carrying service-specific contracts in their prompts and handlers. Runtime tool contracts, tenant-aware configuration, declarative request validation, routing strategies, response shaping, and sanitised events isolate each agent from the systems it needs to use.
+tags:
+  [
+    'TypeScript',
+    'Node.js',
+    'NestJS',
+    'Prisma',
+    'MySQL',
+    'Redis',
+    'REST API',
+    'Voice AI',
+    'Conversational AI',
+    'Tool Calling',
+    'Dynamic Tool Contracts',
+    'LLM Orchestration',
+    'Integration Orchestration',
+    'Multi-Tenant SaaS',
+    'API Contracts',
+    'Domain-Specific Languages',
+    'Declarative Configuration',
+    'Prompt Engineering',
+    'Configurable Tool Policies',
+    'Request Normalisation',
+    'Request Validation',
+    'Policy-Based Validation',
+    'Rule-Based Validation',
+    'Property-Level Validation',
+    'Response Transformation',
+    'Context Management',
+    'Error Handling',
+    'Application Security',
+    'Event-Driven Architecture',
+    'Message Queues',
+    'Credential Isolation',
+    'Dependency Injection',
+    'Strategy Pattern',
+    'Adapter Pattern',
+    'Pipeline Pattern',
+    'Datadog',
+    'Jest',
+    'AI-Assisted Development',
+    'ChatGPT',
+    'GitHub Copilot',
+  ]
+aiAssisted: true
+reviewed: true
+order: 3
+role: 'Staff Software Engineer'
+dates: '2024 - 2025'
+roleSummary: 'The integration layer combines dynamic tool discovery, request normalisation, runtime configuration, policy-based validation, service routing, response transformation, and asynchronous event publication in one NestJS module.'
+metrics:
+  - 'Voice and chat channels share one orchestration contract'
+  - 'Tool definitions are generated from configured endpoints, arguments, and task-specific descriptions'
+  - 'Tenant and agent configuration is resolved outside the model request'
+  - 'One processing path covers extraction, normalisation, configured validation, routing, filtering, channel adaptation, and event publication'
+decisions:
+  - title: 'Create One Internal Tool Contract'
+    detail: 'The integration layer converts channel-specific calls into one internal request before any external service is selected. Shared orchestration can therefore remain independent of the original agent channel.'
+    tradeoff: 'The internal contract becomes a central boundary whose changes require careful compatibility checks.'
+  - title: 'Generate Agent Tools from Configuration'
+    detail: 'The platform generates permitted tools from stored endpoint definitions, argument types, required fields, and task-specific descriptions. Agent capabilities can change through configuration rather than repeated prompt and handler changes.'
+    tradeoff: 'Configuration correctness becomes part of runtime correctness and requires validation of definitions before they reach an agent.'
+  - title: 'Resolve Credentials Outside Agent Context'
+    detail: 'The runtime resolves service locations and authentication for the relevant tenant and agent after a tool request has entered the integration boundary. Prompts and model-generated arguments remain separate from connection details.'
+    tradeoff: 'The additional resolution layer must handle missing or inconsistent tenant configuration explicitly.'
+  - title: 'Define Request Policies as a Configuration Language'
+    detail: 'A DSL-style request interface allows prompt engineers to select property-level validation strategies, comparison inputs, supporting lookups, and failure guidance before an external action proceeds. Different channels and applications can therefore target the same endpoint while applying their own configured controls.'
+    tradeoff: 'The configuration language adds expressive power, but its rules and references must themselves be validated to prevent incorrect policy behaviour.'
+  - title: 'Route Services Through Strategy and Adapter Boundaries'
+    detail: 'Routing strategies select the appropriate service path, while focused adapters contain the request and response behaviour that differs between integrations. New services extend these boundaries without changing agent logic.'
+    tradeoff: 'Each external contract still requires a maintained adapter, and the number of routing components grows with the integration surface.'
+  - title: 'Filter and Adapt Responses Before Returning Them'
+    detail: 'Optional filtering selects the response fields needed for the task before a channel adapter produces the voice or chat result. This limits unnecessary context and preserves the response form expected by each channel.'
+    tradeoff: 'An incorrect filter can remove useful information, while the transformation stages add another place to diagnose malformed results.'
+outcome:
+  - 'Voice and chat agents can use the same external capability through one internal contract.'
+  - 'Tool availability can be tailored without placing credentials or service-specific rules in prompts.'
+  - 'Prompt engineers can configure property-level validation and failure guidance without changing agent or adapter code.'
+  - 'Different channels and applications can reuse the same endpoint with request-specific controls.'
+  - 'Large responses can be reduced before they enter agent context.'
+  - 'Sanitised events support asynchronous follow-up without publishing authentication.'
+  - 'New services have defined extension points across contracts, routing, and transformation.'
+lessons: 'The central difficulty was containing the variation and authority around a tool call rather than sending an HTTP request. Separating discovery, tenant configuration, request normalisation, policy validation, service routing, response shaping, and asynchronous outcomes allowed each concern to change without becoming agent logic. The useful answer was therefore an explicit integration pipeline: generated contracts, runtime configuration, canonical requests, declarative policies, bounded adapters, focused responses, and sanitised events.'
+---
+
+## Context
+
+The production AI platform supports agents whose core activity extends beyond producing text. Voice and chat conversations can require an external action, so the platform needs a dependable way to expose those capabilities and carry each request to the appropriate service.
+
+Both channels need access to the same kinds of tools, but they do not submit calls or consume results in the same form. The integration layer keeps the underlying capability consistent while allowing each channel to retain the contract expected by its runtime.
+
+The intended outcome is a configurable boundary between agents and external services. New tools can then be introduced without placing service contracts, credentials, validation rules, or response transformations inside every agent.
+
+## The Problem
+
+The central difficulty was reconciling variable model-generated arguments with deterministic external API contracts. A model can select the correct tool while still producing names or values that do not match what a service expects.
+
+The variation continues beyond the request: services apply different authentication schemes, naming conventions, payload structures, response sizes, and error formats; voice and chat also require different result shapes. A request can also be structurally correct while failing an application-specific property check, which means that execution cannot rely on schema validation alone.
+
+The problem was therefore one of containment. The agent contract had to remain stable while the execution path absorbed external variation, applied configured security and validation rules, returned useful failure context, and left an observable outcome for subsequent processing.
+
+## Constraints
+
+- **Multiple Channels.** The system was designed to make voice and chat converge on shared orchestration while preserving the result form required by each channel.
+- **Dynamic Capabilities.** The available tools had to vary according to the tenant, agent, and configured task rather than appear as one fixed catalogue.
+- **Credential Isolation.** Authentication had to remain outside prompts, generated tool arguments, and published events.
+- **Configurable Security.** The platform had to apply property-level validation strategies before an external action while keeping those rules outside agent and adapter code.
+- **Prompt-Controlled Guidance.** Prompt engineers had to be able to configure the instruction returned when a request failed a rule, allowing error context to remain appropriate to the application.
+- **Cross-Application Reuse.** The same endpoint had to support different channels and applications without forcing each caller to inherit identical request policies.
+- **Contract Variability.** The integration layer had to absorb differences in arguments, naming styles, payloads, and response structures.
+- **Context Economy.** The platform was designed to return only the response fields and collection sizes needed for the current task.
+- **Extensibility.** A new external service had to be a bounded extension through configuration, routing, and a focused adapter rather than a rewrite of the orchestrator.
+- **Operational Continuity.** In the event of either success or failure, the exchange had to produce a consistent event boundary for follow-up processing.
+
+## The Design
+
+The design uses one progressive pipeline: channel-specific extraction, a canonical request, runtime configuration, request normalisation, policy validation, bounded routing, response filtering, channel adaptation, and event publication. Each stage contains one kind of variation before handing a smaller and more predictable contract to the next stage.
+
+<Mermaid
+  title="Tool Execution Pipeline"
+  direction="TD"
+  chart={`
+flowchart TD
+  Voice@{ icon: "igcse:message", form: "square", label: "Voice agent", pos: "b" }
+  Chat@{ icon: "igcse:message", form: "square", label: "Chat agent", pos: "b" }
+  Extract@{ icon: "igcse:text-box-search", form: "square", label: "Request extraction", pos: "b" }
+  Canonical@{ icon: "igcse:file-document", form: "square", label: "Canonical tool request", pos: "b" }
+  Config@{ icon: "igcse:database", form: "square", label: "Runtime configuration", pos: "b" }
+  Normalise@{ icon: "igcse:filter", form: "square", label: "Request normalisation", pos: "b" }
+  Policy@{ icon: "igcse:file-document", form: "square", label: "Request policy DSL", pos: "b" }
+  Validate@{ icon: "igcse:shield-check", form: "square", label: "Security validation", pos: "b" }
+  Route@{ icon: "igcse:target", form: "square", label: "Routing strategy", pos: "b" }
+  Service@{ icon: "igcse:file-link", form: "square", label: "External service", pos: "b" }
+  Filter@{ icon: "igcse:filter", form: "square", label: "Response filter", pos: "b" }
+  Adapt@{ icon: "igcse:terminal", form: "square", label: "Channel adapter", pos: "b" }
+
+Voice --> Extract
+Chat --> Extract
+Extract --> Canonical --> Config --> Normalise --> Policy --> Validate --> Route --> Service --> Filter --> Adapt
+` }
+/>
+
+Voice and chat entry points first pass through channel-aware extractors. These components remove the source envelope and produce a canonical tool request, allowing the remaining stages to operate without branching around the original channel.
+
+Tool discovery is handled before execution. Data-backed definitions describe the permitted endpoints, arguments, types, required fields, and task-specific guidance; the platform uses those definitions to generate the tools available to an agent. Runtime configuration then resolves the service location and authentication that apply to the tenant and agent, keeping connection details out of the generated request.
+
+Once the request has a complete runtime context, normalisation absorbs differences in argument naming and shape. The canonical request can also carry a declarative policy written through a DSL-style interface. Its configuration identifies the evidence to inspect, the property-level strategy to apply, the comparison input, and the guidance to return when a rule does not pass.
+
+The policy is evaluated before the target action. Supporting information can be obtained through the same routing boundary when a rule needs it, after which the selected strategies determine whether execution can continue. A failed rule stops the action and returns its configured message through the normal channel response, giving the agent useful context without embedding the decision in its prompt.
+
+This configuration allows prompt engineers to consume endpoints through different platforms and applications while retaining control over the permitted behaviour. Each caller can apply its own validation rules, error context, and task-specific instructions without creating a separate endpoint or changing the shared orchestrator.
+
+Once validation succeeds, a routing strategy selects the service boundary, and a focused adapter contains the implementation required by that external contract. The orchestrator therefore coordinates the sequence without accumulating every service-specific rule.
+
+Responses return through the same path in reverse. Optional filters can select nested fields and limit large collections before channel adapters produce a serialised voice result or a structured chat result. The model receives the information required for the current task rather than an unrestricted service response.
+
+<Mermaid
+  title="Contract and Event Boundaries"
+  direction="TD"
+  chart={`
+flowchart TD
+  Schema@{ icon: "igcse:database", form: "square", label: "Configured API schema", pos: "b" }
+  Contract@{ icon: "igcse:file-document", form: "square", label: "Generated tool contract", pos: "b" }
+  Tools@{ icon: "igcse:shield-check", form: "square", label: "Permitted agent tools", pos: "b" }
+  Policy@{ icon: "igcse:file-document", form: "square", label: "Configured request policy", pos: "b" }
+  Rules@{ icon: "igcse:filter", form: "square", label: "Validation strategies", pos: "b" }
+  Gate@{ icon: "igcse:shield-check", form: "square", label: "Execution decision", pos: "b" }
+  Result@{ icon: "igcse:file-document", form: "square", label: "Execution result", pos: "b" }
+  Sanitise@{ icon: "igcse:filter", form: "square", label: "Filter Properties", pos: "b" }
+  Event@{ icon: "igcse:message", form: "square", label: "Redis event", pos: "b" }
+  Listener@{ icon: "igcse:terminal", form: "square", label: "Asynchronous listener", pos: "b" }
+
+Schema --> Contract --> Tools
+Tools --> Gate
+Policy --> Rules --> Gate --> Result
+Result --> Sanitise --> Event --> Listener
+` }
+/>
+
+Every exchange also reaches a separate event boundary. Authentication is removed before the request and result are published through Redis, allowing asynchronous listeners to respond without receiving connection details or becoming part of the original tool call.
+
+A new integration is therefore introduced through a configured contract, optional request policies, a routing choice, and a focused adapter. The result is one execution language for voice and chat: the layer discovers permitted tools, resolves runtime context, validates application-specific conditions, contains service variation, shapes the response, and records a sanitised outcome without moving those responsibilities into agent logic.
