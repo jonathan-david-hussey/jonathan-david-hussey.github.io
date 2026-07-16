@@ -1,19 +1,25 @@
 ---
 title: 'Software Architect, Technology Innovation Institute'
-description: 'Architecture ownership for an internal .NET 9 platform rebuild, including workflow automation, SAP integration, delivery controls, and engineering governance.'
+description: 'Architecture ownership for an internal .NET 9 platform rebuild, including Web API foundations, SAP synchronisation, workflow automation, delivery controls, and engineering governance.'
 category: 'experience'
-tags: ['C#', '.NET 9', 'EF Core', 'SQL Server', 'Wolverine', 'Hangfire', 'FusionCache', 'GitLab CI/CD', 'Serilog', 'xUnit']
+tags: ['C#', '.NET 9', 'ASP.NET Core', 'EF Core', 'SQL Server', 'Wolverine', 'Hangfire', 'FusionCache', 'GitLab CI/CD', 'Serilog', 'xUnit', 'NSubstitute', 'SAP']
 order: 1
 reviewed: true
 ---
 
 *Abu Dhabi, UAE · Hybrid · Contract · Jun 2025 – Mar 2026*
 
-- Owned the architecture of an internal platform rebuild while remaining hands-on within an agile team. This included the team's first ASP.NET Core Web API platform on .NET 9, structured around clean architecture, 50+ versioned endpoints, 30+ domain entities, and seven SAP integrations maintained through resilient HTTP clients and scheduled background jobs.
-- Designed the event-driven workflow engine that supports multi-step approvals. The implementation used a finite state machine in which every transition is published through Wolverine's durable, SQL-backed queues with inbox/outbox semantics, ensuring that approvals, notifications, and emails can survive restarts and retry cleanly.
-- Built the platform's event management and notification stack so operational communication could be handled consistently across the system. This included Fluid-rendered email templates dispatched from workflow events, and a normalised application-error event that carries correlation IDs through the message pipeline before handing off to email, Teams, or a future monitoring sink without changing event producers.
-- Supported the migration away from a legacy WebForms application through a strangler-fig approach. In order to minimise disruption, the bridge was packaged as a backward-compatible .NET Standard 2.0 NuGet library so existing consumers could continue to operate while functionality moved into the new platform.
-- Introduced delivery controls where no formal version control or CI/CD pipeline existed. GitLab was set up with build, test, and publish stages, JUnit-reported test runs, and artifact promotion across environments; structured logging and health checks were then added so production behaviour could be traced with greater confidence.
-- Reviewed every merge request, led technical design sessions, and introduced agentic coding tools into the team's daily workflow. Claude Code, OpenAI Codex, and GitHub Copilot were applied to scaffolding, test generation, and refactoring in order to improve engineering throughput while preserving architectural oversight.
+- Owned architecture and hands-on implementation for an internal platform rebuild, establishing the team's first ASP.NET Core Web API platform on .NET 9 and EF Core. The platform covered 50+ versioned endpoints, 30+ domain entities, structured API contracts, routing, and seven SAP integrations for financial data workflows.
+- Designed the SAP synchronisation and workflow-governance architecture around asynchronous Wolverine-backed durable queues. Long-running integration work moved off request/response paths into retryable processing with throttling, circuit breakers, inbox/outbox semantics, and resilience patterns.
+- Built the event-driven workflow engine for 7+ workflow types and multi-step approvals. The implementation used finite-state workflow modelling with Strategy, Builder, Factory, and Template Method patterns so approvals, notifications, and emails could survive restarts and retry cleanly.
+- Modelled the SQL Server data layer with 30+ entities, relationships, constraints, EF Core migrations, dependency-injection configuration, and usage patterns that gave the API, workflow engine, and SAP synchronisation paths a reliable relational foundation.
+- Structured the platform around Clean Architecture, DDD, SOLID principles, dependency inversion, and testable service boundaries, then reworked legacy WebForms code away from copy-paste logic, public static state, and hand-built constructors.
+- Supported the migration away from the legacy ASP.NET WebForms application through a strangler-fig approach. In order to minimise disruption, the bridge was packaged as a backward-compatible .NET Standard 2.0 NuGet library so existing consumers could continue to operate while functionality moved into the new platform.
+- Built the platform's event management, notification, and diagnostics stack so operational communication could be handled consistently across the system. Fluid-rendered email templates, centralised error handling, Serilog structured logging, correlation IDs, health checks, and a normalised application-error event made workflow, template-rendering, SAP, and Web API failures traceable.
+- Introduced delivery controls where no formal version control or CI/CD pipeline existed. GitLab was set up with build, test, publish, JUnit test-reporting, environment-promotion, build-analyser, and artefact-promotion stages, supported by merge-request review standards and release documentation.
+- Raised engineering quality through xUnit and NSubstitute unit and integration tests, code-quality standards, design review, and mentoring on API design, async patterns, dependency injection, contract-first development, database migrations, local development, and maintainable .NET implementation.
+- Authored technical and non-technical documentation covering local Git/GitLab setup, development README material, database migrations, API clients, workflows, global error handling, SAP synchronisation, GitLab administration, and environment variables.
+- Clarified product and user needs by extracting Jira issues from team discussions, holding user calls, estimating scope, translating business requirements into technical specifications, and adapting designs for SAP synchronisation and workflow governance.
+- Introduced Claude Code, OpenAI Codex, GitHub Copilot, and Gemini into system design, scaffolding, test generation, review, and refactoring workflows, reducing an estimated 250 hours of development work to around 50 while preserving architectural oversight.
 
 **Related case studies:** [SAP synchronisation](/showcase/case-studies/sap-synchronisation) · [Governance approval emails](/showcase/case-studies/workflow-governance-emails)

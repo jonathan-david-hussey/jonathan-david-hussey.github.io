@@ -1,15 +1,24 @@
 ---
 title: 'Staff Software Engineer, Actualize'
-description: 'Technical lead for a generative-AI outbound calling platform serving UAE government and enterprise clients.'
+description: 'Technical lead for a generative-AI calling and integration platform serving UAE government and enterprise clients.'
 category: 'experience'
-tags: ['TypeScript', 'NestJS', 'Node.js', 'MySQL', 'Redis', 'RabbitMQ', 'OpenAI', 'Datadog']
+tags: ['TypeScript', 'NestJS', 'Node.js', 'MySQL', 'Redis', 'RabbitMQ', 'BullMQ', 'Prisma', 'OpenAI', 'GPT-4o', 'RAG', 'Vapi', 'Twilio', 'Freshdesk', 'WhatsApp', 'AWS ECS', 'Docker', 'Datadog', 'GitHub Actions', 'Jenkins']
 order: 2
 ---
 
-*Abu Dhabi, UAE · Hybrid · Full-time · Jun 2024 – Mar 2025*
+_Abu Dhabi, UAE · Hybrid · Full-time · Jun 2024 – Mar 2025_
 
-- Led architecture and delivery of a generative-AI outbound calling platform used by government and enterprise clients across the UAE, including ministries, hospitals and telecoms.
-- Built the orchestration layer that unifies Twilio, WhatsApp, Freshdesk and internal RAG services behind one API, with RabbitMQ streaming and payload normalisation keeping the integrations decoupled.
-- Shipped agentic LLM workflows, dynamic tool calling, retrieval-augmented generation, GPT-4o function calls, as production features rather than demos, with billing and usage quotas attached.
-- Enforced multi-tenant isolation properly: row-level security in the database, JWT claims validation and role-based access, designed beyond the OWASP baseline.
-- Instrumented the whole platform with Datadog, distributed tracing, dashboards and alerting, and led the post-incident reviews when things did go wrong.
+- Led architecture and implementation of a generative-AI calling platform for government and enterprise clients across the UAE, owning SaaS delivery from technical design through implementation, testing, deployment, production readiness, and operational support.
+- Integrated OpenAI APIs, GPT-4o, function calling, retrieval-augmented generation, Vapi, Twilio, Freshdesk, WhatsApp, and internal APIs into agentic workflows where language models could invoke tools and complete multi-step customer interactions.
+- Built the orchestration layer that unified third-party APIs, internal logic, payload normalisation, and tool-calling behaviour across inbound/outbound call and integration workflows, keeping service-specific contracts outside individual agents.
+- Designed a prompt-engineering DSL that allowed prompt engineers to define API calls and custom responses inside requests without repeated engineering changes, improving iteration speed on LLM-driven product behaviour.
+- Built the call scheduler, real-time scheduling infrastructure, event system, integrations module, usage tracking, billing analytics, and customer-facing workflow components from the initial design through production support.
+- Defined the backend architecture using TypeScript, NestJS, Node.js, MySQL, Redis, BullMQ, RabbitMQ, and Prisma, applying service-boundary, data-modelling, and API-design discipline across the stack.
+- Designed event-driven processing with RabbitMQ, BullMQ, controller layers, distributed asynchronous messaging, and normalised payloads so integrations, call scheduling, and downstream workflows could remain decoupled under variable workload.
+- Implemented multi-tenant security controls including row-level security, JWT claims validation, role-based access control, API key validation, and OWASP-aligned defensive design.
+- Instrumented services with Datadog distributed logging, dashboards, tracing, health metrics, alerting, and correlation IDs to support diagnosis, operational ownership, and post-incident follow-through.
+- Led Jenkins and GitHub Actions CI/CD setup, shipped Dockerised Node.js services on AWS ECS, set up repositories, and partnered with DevOps on Terraform-managed deployment design.
+- Mentored engineers through design reviews, code reviews, incident analysis, collaborative coding sessions, READMEs, system diagrams, training videos, and knowledge-sharing practices, while using GitHub Copilot and ChatGPT in day-to-day development.
+- Partnered with product managers, DevOps, and stakeholders to define technical roadmaps, clarify trade-offs, manage concurrent delivery priorities, and keep implementation choices focused on the simplest design that met reliability and scale needs.
+
+**Related case study:** [AI Tool Integration Layer](/showcase/case-studies/ai-tool-integration-layer)

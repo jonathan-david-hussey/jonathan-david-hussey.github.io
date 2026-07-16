@@ -1,18 +1,30 @@
 ---
 title: 'Senior Software Engineer, Onalytica'
-description: 'Five years of cloud-native data engineering: Elasticsearch performance, outage elimination, large-scale ingestion pipelines, and a 125M records/month ML classifier.'
+description: 'Five years of cloud-native product and data engineering across Elasticsearch performance, outage elimination, large-scale ingestion, analytics delivery, AWS reporting, and machine-learning pipelines.'
 category: 'experience'
-tags: ['C#', '.NET Core', 'AWS', 'Elasticsearch', 'SQL Server', 'DynamoDB', 'TPL Dataflow', 'Angular', 'Python']
+tags: ['C#', '.NET Core', 'AWS', 'Elasticsearch', 'SQL Server', 'DynamoDB', 'Lambda', 'SQS', 'SNS', 'SES', 'S3', 'Kinesis', 'CloudFormation', 'CloudWatch', 'TPL Dataflow', 'Angular', 'TypeScript', 'Python', 'xUnit']
 order: 3
 ---
 
 *London, UK · Remote · Full-time · Aug 2019 – May 2024*
 
-- Ran a performance programme on our Elasticsearch cluster after months of degrading search: 20+ targeted fixes that cut average latency 89%, ended threadpool rejections almost entirely, and brought flagship infrastructure costs down 92%.
-- The platform suffered site-wide outages several times a day. Redesigned the worst pipelines around producer/consumer queues and proper concurrency, downtime went to zero, and the company awarded shares for it.
-- Found and fixed a five-year-old defect in the core Twitter ingestion pipeline that had silently capped data yield at 6.25% per request. Restoring it to 100% lifted search, reporting and profile quality across every product.
-- Led the Twitter API v1-to-v2 migration across ten dependent applications, dependency analysis, rate-limit redesign, phased rollout, without downstream disruption.
-- Built and deployed an end-to-end tweet classifier handling 125M records a month, owning everything from feature engineering and model selection through deployment and monitoring.
-- Five years of code review across 30 repositories, 500+ reviews, alongside building ingestion pipelines for YouTube and podcast data on AWS with capacity to scale 100x.
+<QuoteBlock author="Parag Nair, Lead Software Engineer and former Onalytica colleague">
+  "One of the brightest analytical brains I've ever met, with an acute attention to detail."
+</QuoteBlock>
+
+- Designed and delivered full-stack SaaS capabilities across C#/.NET services, TypeScript frontends, Angular 17, REST APIs, WebSocket APIs, data pipelines, and customer-facing analytics dashboards.
+- Ran a performance programme on a 1.6 billion tweet Elasticsearch cluster after months of degrading search. More than 20 targeted fixes reduced JVM memory pressure by 15%, search threadpool rejections by 99%, average search latency by 89%, application costs by 92%, and API requests by 50%.
+- Increased Search API uptime to 100% and reduced CPU usage from roughly 90% to roughly 10% by profiling production behaviour, reproducing failures, and applying focused C#/.NET optimisation work.
+- The platform suffered site-wide outages several times a day. Redesigned the weakest ingestion and processing paths around producer/consumer queues, multithreading, TPL Dataflow, and concurrency controls, virtually eliminating downtime and earning a company share award.
+- Found and fixed a five-year-old defect in the core Twitter ingestion pipeline that had silently capped data yield at 6.25% per request. Restoring it to 100% lifted search, reporting, analytics, and profile quality across every product.
+- Led the Twitter API v1-to-v2 migration across 10+ dependent applications by analysing dependencies, creating Azure DevOps epics and issues, redesigning rate-limit handling, and choosing an adapter strategy so teams could move without downstream disruption.
+- Delivered YouTube and social-data ingestion pipelines that refreshed 70,000+ accounts daily and supported millions of posts, using research, prototyping, priority-queue scheduling, API-limit-aware backfills, and production monitoring.
+- Expanded notification, ingestion, and reporting systems using AWS CloudFormation, Lambda, SNS, SQS, SES, S3, CloudWatch, scheduled triggers, REST endpoints, email pipelines, Kinesis streams, DynamoDB Streams, and Elasticsearch upload paths.
+- Refactored legacy analytics delivery logic with TPL Dataflow, OOP, and SOLID patterns, reducing data consolidation time by 99% and achieving a 360x efficiency increase.
+- Improved data retrieval performance from DynamoDB by 1,000% over the AWS SDK and increased retrieval performance by 16,000% on an existing product feature.
+- Built and deployed an end-to-end tweet classifier handling 125M records a month, owning exploratory data analysis, feature engineering, classifier selection, model evaluation, production delivery, and monitoring.
+- Strengthened quality and release practices with xUnit, Moq, Fluent Assertions, AutoFixture, JavaScript linting, Husky pre-commit checks, CloudFormation updates, CodePipeline, CodeBuild, GitHub code reviews, developer documentation, architecture notes, debugging guides, and log-analysis practices.
+- Reviewed 500+ pull requests across 30 repositories, mentored engineers on SOLID, DDD, API design, microservices, AWS, Docker, testing, and built 150+ custom GPT assistants for engineering, architecture, refactoring, and TDD support.
+- Collaborated with project managers, business analysts, architects, designers, stakeholders, and client teams to split work, estimate complexity, document dependencies, support design decisions, and build from common ground toward product outcomes.
 
 **Related case studies:** [YouTube ingestion](/showcase/case-studies/youtube-ingestion) · [Twitter ingestion](/showcase/case-studies/twitter-ingestion-migration) · [Twitter parser bridge](/showcase/case-studies/twitter-parser-migration) · [Email reporting](/showcase/case-studies/client-email-reports)
