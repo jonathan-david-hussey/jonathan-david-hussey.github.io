@@ -751,6 +751,98 @@ html.dark .astro-code[data-language='text'] span {
   color: var(--color-accent);
 }
 
+.experience-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.experience-list li + li {
+  border-top: 1px solid color-mix(in srgb, var(--color-border) 74%, transparent);
+}
+
+.experience-list-link {
+  display: grid;
+  grid-template-columns: 2rem minmax(0, 1fr);
+  gap: 0.85rem;
+  align-items: start;
+  padding: 0.85rem 0;
+  color: var(--color-link-subtle);
+  text-decoration: none;
+  transition: color 150ms ease;
+}
+
+.experience-list-index {
+  padding-top: 0.28rem;
+  text-align: right;
+  color: var(--color-text-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.experience-list-main {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) max-content;
+  gap: 1.5rem;
+  align-items: baseline;
+  min-width: 0;
+}
+
+.experience-list-title {
+  min-width: 0;
+  color: var(--color-link-subtle);
+  font-size: 0.96rem;
+  font-weight: 600;
+  line-height: 1.55;
+}
+
+.experience-list-role {
+  display: block;
+  color: var(--color-text-strong);
+  font-size: 1.05rem;
+  font-weight: 700;
+  line-height: 1.4;
+}
+
+.experience-list-company {
+  display: block;
+  color: var(--color-text-muted);
+  font-size: 0.85rem;
+  line-height: 1.5;
+}
+
+.experience-list-link:hover .experience-list-role,
+.experience-list-link:focus-visible .experience-list-role {
+  color: var(--color-accent);
+}
+
+.experience-list-date {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono);
+  font-size: 0.78rem;
+  font-weight: 600;
+  line-height: 1.5;
+  text-align: right;
+  white-space: nowrap;
+}
+
+.experience-list-link:hover .experience-list-title,
+.experience-list-link:focus-visible .experience-list-title {
+  color: var(--color-accent);
+}
+
+@media (max-width: 639px) {
+  .experience-list-main {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 0.18rem;
+  }
+
+  .experience-list-date {
+    text-align: left;
+  }
+}
+
 .docs-article-pagination-link {
   display: flex;
   flex-direction: column;
