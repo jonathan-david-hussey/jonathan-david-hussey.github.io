@@ -15,12 +15,14 @@ import {
 import Layout from '../../../layouts/Layout.astro';
 
 export function getStaticPaths() {
-  return Object.values(docsCategoryDataMap).map((category) => ({
-    params: {
-      parent: category.parent,
-      category: category.slug,
-    },
-  }));
+  return Object.values(docsCategoryDataMap)
+    .filter((category) => !category.hidden)
+    .map((category) => ({
+      params: {
+        parent: category.parent,
+        category: category.slug,
+      },
+    }));
 }
 
 const { parent: parentSlug, category } = Astro.params;
@@ -31,6 +33,22 @@ const publicDocs = getPublicDocs(allDocs);
 const categoryDocs = category ? getOrderedDocsForCategory(publicDocs, category) : [];
 const sections = parent ? getSidebarSections(parent.slug) : [];
 const searchPreviews = getSearchPreviewLookup(publicDocs);
+const isExperienceCategory = subcategory?.slug === 'experience';
+const monthPattern = '(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)';
+const experienceDateRangePattern = new RegExp(
+  `(${monthPattern}\\s+\\d{4}\\s+[\\u2013-]\\s+(?:${monthPattern}\\s+\\d{4}|present))`,
+  'i',
+);
+
+function getExperienceDateRange(body: string) {
+  return body.match(experienceDateRangePattern)?.[1];
+}
+
+const categoryDocItems = categoryDocs.map((doc, index) => ({
+  doc,
+  index,
+  dateRange: isExperienceCategory ? getExperienceDateRange(doc.body) : undefined,
+}));
 ---
 
 <Layout
@@ -68,27 +86,55 @@ const searchPreviews = getSearchPreviewLookup(publicDocs);
         </p>
 
         {
-          categoryDocs.length === 0 ? (
+          categoryDocItems.length === 0 ? (
             <div class="category-empty mt-10 rounded-[15px] bg-[var(--color-surface-muted)] px-6 py-14 text-center text-[var(--color-text-muted)]">
               No articles yet. Add MDX files in <code>src/content/docs/{category}</code> to populate this section.
             </div>
           ) : (
             <div class="docs-divider mt-10 border-t border-[var(--color-border)] pt-6">
-              <ol class="space-y-1">
-                {categoryDocs.map((doc, index) => (
-                  <li>
-                    <a
-                      href={getArticleHref(doc.data.category, getCleanDocSlug(doc.id))}
-                      class="docs-article-list-link grid grid-cols-[2rem_minmax(0,1fr)] items-center gap-x-3 py-2 text-sm text-[var(--color-link-subtle)] transition hover:text-[var(--color-accent)]"
-                    >
-                      <span class="self-center text-right text-xs font-semibold leading-none text-[var(--color-text-muted)]">
-                        {String(index + 1).padStart(2, '0')}
-                      </span>
-                      <span class="leading-6">{doc.data.title}</span>
-                    </a>
-                  </li>
-                ))}
-              </ol>
+              {
+                isExperienceCategory ? (
+                  <ol class="experience-list">
+                    {categoryDocItems.map(({ doc, index, dateRange }) => (
+                      <li>
+                        <a
+                          href={getArticleHref(doc.data.category, getCleanDocSlug(doc.id))}
+                          class="experience-list-link"
+                        >
+                          <span class="experience-list-index">{String(index + 1).padStart(2, '0')}</span>
+                          <span class="experience-list-main">
+                            {doc.data.role && doc.data.company ? (
+                              <span>
+                                <span class="experience-list-role">{doc.data.role}</span>
+                                <span class="experience-list-company">{doc.data.company}</span>
+                              </span>
+                            ) : (
+                              <span class="experience-list-title">{doc.data.title}</span>
+                            )}
+                            {dateRange && <span class="experience-list-date">{dateRange}</span>}
+                          </span>
+                        </a>
+                      </li>
+                    ))}
+                  </ol>
+                ) : (
+                  <ol class="space-y-1">
+                    {categoryDocItems.map(({ doc, index }) => (
+                      <li>
+                        <a
+                          href={getArticleHref(doc.data.category, getCleanDocSlug(doc.id))}
+                          class="docs-article-list-link grid grid-cols-[2rem_minmax(0,1fr)] items-center gap-x-3 py-2 text-sm text-[var(--color-link-subtle)] transition hover:text-[var(--color-accent)]"
+                        >
+                          <span class="self-center text-right text-xs font-semibold leading-none text-[var(--color-text-muted)]">
+                            {String(index + 1).padStart(2, '0')}
+                          </span>
+                          <span class="leading-6">{doc.data.title}</span>
+                        </a>
+                      </li>
+                    ))}
+                  </ol>
+                )
+              }
             </div>
           )
         }
