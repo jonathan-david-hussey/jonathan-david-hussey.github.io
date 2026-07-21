@@ -40,10 +40,7 @@ const docs = defineCollection({
           .default([]),
         order: z.number().optional().default(100),
         updatedAt: z.coerce.date().optional(),
-        // Structured showcase sections. Required for projects and case studies
-        // via superRefine below; unused by other categories.
-        role: z.string().optional(),
-        company: z.string().optional(),
+        subtitle: z.string().optional(),
         website: z.string().url().optional(),
         dates: z.string().optional(),
         roleSummary: z.string().optional(),
@@ -70,7 +67,6 @@ const docs = defineCollection({
           if (!condition) ctx.addIssue({ code: 'custom', path: [path], message });
         };
 
-        require(Boolean(data.role), 'role', 'Projects and case studies must set role.');
         require(Boolean(data.dates), 'dates', 'Projects and case studies must set dates.');
         require(
           Boolean(data.roleSummary),

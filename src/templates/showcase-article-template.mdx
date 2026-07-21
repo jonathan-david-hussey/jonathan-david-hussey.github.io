@@ -3,6 +3,16 @@
 #   src/content/docs/projects/<slug>/<slug>.mdx
 #   src/content/docs/case-studies/<slug>/<slug>.mdx
 #
+# Before drafting, read the canonical style guide at the repo root:
+#   LLM_STYLE.md
+# It covers UK English, sentence patterns, banned vocabulary (no
+# "threat", "asset", "vulnerability", "safeguard", "Risk-Led",
+# "Threat-Led", "Model" in titles), entity-naming rule, voice by
+# section, and the section contracts below.
+#
+# The same rules are enforced by scripts/lint-showcase-style.mjs,
+# which runs as part of `npm run check`.
+#
 # All fields below are REQUIRED for categories 'projects' and 'case-studies':
 #   role, dates, roleSummary, metrics (>=2), decisions (>=3), outcome (>=1), lessons
 # The body must contain, in order: ## Context, ## The Problem, ## Constraints, ## The Design
@@ -16,7 +26,6 @@ badges: []
 aiAssisted: false # shows the AI-Assisted badge with a robot icon
 reviewed: false # shows the Reviewed badge with a tick icon
 order: 100
-role: 'Author'
 dates: '20XX - 20XX'
 roleSummary: 'One or two sentences on what you personally owned and did.'
 metrics:

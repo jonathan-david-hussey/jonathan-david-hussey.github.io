@@ -103,14 +103,10 @@ const categoryDocItems = categoryDocs.map((doc, index) => ({
                         >
                           <span class="experience-list-index">{String(index + 1).padStart(2, '0')}</span>
                           <span class="experience-list-main">
-                            {doc.data.role && doc.data.company ? (
-                              <span>
-                                <span class="experience-list-role">{doc.data.role}</span>
-                                <span class="experience-list-company">{doc.data.company}</span>
-                              </span>
-                            ) : (
-                              <span class="experience-list-title">{doc.data.title}</span>
-                            )}
+                            <span>
+                              <span class="experience-list-role">{doc.data.title}</span>
+                              {doc.data.subtitle && <span class="experience-list-company">{doc.data.subtitle}</span>}
+                            </span>
                             {dateRange && <span class="experience-list-date">{dateRange}</span>}
                           </span>
                         </a>
