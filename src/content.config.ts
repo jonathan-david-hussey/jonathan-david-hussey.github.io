@@ -23,6 +23,8 @@ const docs = defineCollection({
         author: z.string().optional(),
         editUrl: z.string().optional(),
         heroImage: image().optional(),
+        thumbnail: image().optional(),
+        thumbnailSize: z.enum(['sm', 'md', 'lg']).optional().default('md'),
         hideFromSearch: z.boolean().optional().default(false),
         redirectFrom: z.array(z.string()).optional().default([]),
         relatedLinks: z
@@ -41,6 +43,8 @@ const docs = defineCollection({
         // Structured showcase sections. Required for projects and case studies
         // via superRefine below; unused by other categories.
         role: z.string().optional(),
+        company: z.string().optional(),
+        website: z.string().url().optional(),
         dates: z.string().optional(),
         roleSummary: z.string().optional(),
         // One- to three-sentence TL;DR rendered directly under the title, above
